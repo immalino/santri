@@ -32,7 +32,7 @@
 
 - [x] **Fase 0 — Setup Project & Struktur Folder**
 - [x] **Fase 1 — Database Layer (Drizzle) & Seed**
-- [ ] **Fase 2 — Autentikasi & Otorisasi (better-auth)**
+- [x] **Fase 2 — Autentikasi & Otorisasi (better-auth)**
 - [ ] **Fase 3 — Design System & Layout Per Role**
 - [ ] **Fase 4 — Fitur Admin**
 - [ ] **Fase 5 — Fitur Ustadz**
@@ -163,8 +163,8 @@
 
 ### Task
 
-- [ ] **2.1** Baca docs better-auth (Context7 `/better-auth/better-auth`): `installation` (Drizzle adapter), `Next.js integration`, dan `additionalFields` untuk kolom `role` di `user`.
-- [ ] **2.2** Buat `src/lib/auth.ts` (server):
+- [x] **2.1** Baca docs better-auth (Context7 `/better-auth/better-auth`): `installation` (Drizzle adapter), `Next.js integration`, dan `additionalFields` untuk kolom `role` di `user`.
+- [x] **2.2** Buat `src/lib/auth.ts` (server):
   ```ts
   import { betterAuth } from 'better-auth';
   import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -180,39 +180,48 @@
   });
   ```
   ⚠️ **Kolom `role` HARUS ada di tabel `user`** (sudah dibuat di Fase 1). Pastikan `additionalFields` sesuai tipe kolom yang ada.
-- [ ] **2.3** Buat route handler auth: `src/app/api/auth/[...all]/route.ts`:
+- [x] **2.3** Buat route handler auth: `src/app/api/auth/[...all]/route.ts`:
   ```ts
   import { auth } from '@/lib/auth';
   import { toNextJsHandler } from 'better-auth/next-js';
   export const { GET, POST } = toNextJsHandler(auth);
   ```
-- [ ] **2.4** Buat client `src/lib/auth-client.ts`:
+- [x] **2.4** Buat client `src/lib/auth-client.ts`:
   ```ts
   import { createAuthClient } from 'better-auth/react';
   import { nextCookies } from 'better-auth/next-js';
   export const authClient = createAuthClient({ plugins: [nextCookies()] });
   ```
   (Import plugins sesuai versi docs yang kamu baca.)
-- [ ] **2.5** Buat helper proteksi server-side `src/lib/permissions.ts`:
+- [x] **2.5** Buat helper proteksi server-side `src/lib/permissions.ts`:
   - `requireRole(roles)` — ambil session via `auth.api.getSession`, return user atau `null`; redirect ke `/login` kalau tidak login, ke halaman sesuai role kalau role tidak cocok.
   - Helper `requireApiRole(roles)` untuk dipakai di route handler (throw/return 401/403).
-- [ ] **2.6** Buat **Proxy** proteksi route — **DI NEXT 16 NAMANYA `proxy.ts`, bukan `middleware.ts`** (baca `16-proxy.md`):
+- [x] **2.6** Buat **Proxy** proteksi route — **DI NEXT 16 NAMANYA `proxy.ts`, bukan `middleware.ts`** (baca `16-proxy.md`):
   - `src/proxy.ts` dengan `getSessionCookie` dari `better-auth/cookies`.
   - Alur: route `(auth)/login` → jika sudah login, redirect ke dashboard sesuai role. Route role (admin/ustadz/wali) → jika tidak ada cookie session, redirect ke `/login`.
   - ⚠️ **Proxy HANYA optimasi (optimistic check) — BUKAN otorisasi final.** Setiap handler server/API tetap melakukan `requireRole` (CLAUDE.md). Jangan pernah mengandalkan proxy saja.
-- [ ] **2.7** Buat halaman login `src/app/(auth)/login/page.tsx`:
+- [x] **2.7** Buat halaman login `src/app/(auth)/login/page.tsx`:
   - Form email + password, tombol submit, error message Bahasa Indonesia.
   - Setelah login sukses → redirect ke dashboard sesuai role (`/admin/dashboard`, `/ustadz/input`, `/wali/progress`).
   - Style mengikuti DESIGN.md (mobile-first, button min-height 44px).
-- [ ] **2.8** Logout (tombol di layout per role) + tampilkan nama user di top bar.
-- [ ] **2.9** **TIDAK ADA signup publik.** Akun dibuat oleh admin (Fase 4) atau lewat seed. Pastikan route `/api/auth/sign-up` tidak bisa dipakai publik (matikan endpoint bila perlu / jangan tampilkan form signup).
-- [ ] **2.10** Uji manual: login sebagai admin, ustadz, wali → masing-masing redirect ke dashboard-nya; akses route role lain → ditolak. Commit: `feat(auth): better-auth setup, login, and role protection`
+- [x] **2.8** Logout (tombol di layout per role) + tampilkan nama user di top bar.
+- [x] **2.9** **TIDAK ADA signup publik.** Akun dibuat oleh admin (Fase 4) atau lewat seed. Pastikan route `/api/auth/sign-up` tidak bisa dipakai publik (matikan endpoint bila perlu / jangan tampilkan form signup).
+- [x] **2.10** Uji manual: login sebagai admin, ustadz, wali → masing-masing redirect ke dashboard-nya; akses route role lain → ditolak. Commit: `feat(auth): better-auth setup, login, and role protection`
 
 ### Definition of Done (Fase 2)
 
-- [ ] 3 role bisa login/logout dengan benar.
-- [ ] Route per role terkunci: user salah role tidak bisa mengakses halaman/API role lain.
-- [ ] `npm run lint` & `npm run build` hijau.
+- [x] 3 role bisa login/logout dengan benar.
+- [x] Route per role terkunci: user salah role tidak bisa mengakses halaman/API role lain.
+- [x] `npm run lint` & `npm run build` hijau.
+
+> 📝 **Catatan Fase 2 (deviasi/langkah yang ditemukan saat implementasi):**
+> - **Keputusan struktur URL per role (dikonfirmasi ke user):** docs bertentangan — `ARCHITECTURE.md` & IMPLEMENTATION 0.4 menuliskan route groups `(admin)/(ustadz)/(wali)` (URL tanpa prefix: `/dashboard`, `/input`, `/progress`), sedangkan target redirect di IMPLEMENTATION 2.7 menulis `/admin/dashboard`, `/ustadz/input`, `/wali/progress`. **Keduanya tidak bisa dipenuhi sekaligus** (route group tidak menghasilkan segment URL). **Keputusan: prefix role** — folder `src/app/admin/`, `src/app/ustadz/`, `src/app/wali/` (bukan route group, masing-masing punya `layout.tsx`); route group `(auth)` tetap dipakai untuk `/login`. Proxy matcher, `roleHome`, dan navigasi mengikuti URL berprefix ini.
+> - **`nextCookies()` dipasang di server (`lib/auth.ts`), bukan di client** — deviasi dari snippet task 2.4. Plugin ini untuk Server Actions (meneruskan `Set-Cookie` via `cookies()` Next.js). Client (`auth-client.ts`) cukup `createAuthClient({ plugins: [inferAdditionalFields<typeof auth>()] })` supaya `user.role` ter-typed.
+> - **Sign-up publik dimatikan:** `emailAndPassword.disableSignUp: true` (endpoint `/sign-up` balas 400) dan kolom `role` di `additionalFields` memakai `input: false` (user tidak bisa set/ubah role sendiri). ⚠️ **Dampak ke Fase 4:** task 4.10 **tidak bisa** memakai `auth.api.signUpEmail` untuk membuat akun admin karena endpoint sign-up diblokir. Fase 4 harus pakai mekanisme privileged (misal plugin admin better-auth `admin.createUser`) — **perlu diverifikasi saat Fase 4**.
+> - **`src/lib/roles.ts` dipisah dari `src/lib/permissions.ts`:** konstanta `Role`, `roleHome`, `roleLabel` ditaruh di modul terpisah yang **tidak** mengimpor auth/db. Kalau client component mengimpor dari `permissions.ts`, seluruh rantai `auth.ts` → `db/index.ts` → `postgres` ikut ke bundle client → build gagal `Can't resolve 'tls'`. Aturan: **client component hanya boleh impor dari `roles.ts`** (dan `auth-client.ts`), bukan `permissions.ts`.
+> - **Otorisasi final ada di layout tiap role** (`requireRole([...])`), bukan cuma proxy — sesuai CLAUDE.md. Proxy hanya cek keberadaan session cookie (optimistic). Redirect role-salah ke `roleHome[role]` sendiri. Terverifikasi via curl: login 3 role → halaman masing-masing 200; akses route role lain → 307 ke home-nya; tanpa cookie → 307 ke `/login`; logout → proteksi aktif lagi.
+> - Root `/` diubah jadi redirect dinamis: belum login → `/login`, sudah login → `roleHome[role]`.
+> - Placeholder halaman `/admin/dashboard`, `/ustadz/input`, `/wali/progress` dibuat minimal (dipakai sebagai target redirect & uji login). Layout & navigasi penuh per role dikerjakan di Fase 3.
 
 ---
 

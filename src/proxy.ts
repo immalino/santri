@@ -1,13 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
-// Next.js 16: this file replaces the old middleware.ts.
-// Route protection based on the session cookie (optimistic check only)
-// will be implemented in Phase 2. For now it is a no-op pass-through.
-export function proxy() {
+/**
+ * Next.js 16 proxy (renamed from middleware.ts in Next 15).
+ *
+ * OPTIMISTIC CHECK ONLY — this is NOT authorization. The session cookie only
+ * proves a session token exists; the user's role is always re-checked in each
+ * page/API handler via src/lib/permissions.ts (CLAUDE.md).
+ */
+const PROTECTED_PREFIXES = ["/admin", "/ustadz", "/wali"];
+
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const sessionCookie = getSessionCookie(request);
+
+  const isProtected = PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+
+  // Not signed in → send to the login page (no role known from the cookie).
+  if (isProtected && !sessionCookie) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  // Empty matcher: proxy does not run until routes are wired up in Phase 2.
-  matcher: [],
+  matcher: ["/admin/:path*", "/ustadz/:path*", "/wali/:path*"],
 };

@@ -30,7 +30,7 @@
 
 ## 1. Progress Tracker
 
-- [ ] **Fase 0 — Setup Project & Struktur Folder**
+- [x] **Fase 0 — Setup Project & Struktur Folder**
 - [ ] **Fase 1 — Database Layer (Drizzle) & Seed**
 - [ ] **Fase 2 — Autentikasi & Otorisasi (better-auth)**
 - [ ] **Fase 3 — Design System & Layout Per Role**
@@ -47,8 +47,8 @@
 
 ### Task
 
-- [ ] **0.1** Baca & pahami seluruh dokumen acuan: `CLAUDE.md`, `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/SCHEMA.md`. Kalau ada yang tidak masuk akal, tanyakan dulu.
-- [ ] **0.2** Baca panduan Next.js terkait di `node_modules/next/dist/docs/01-app/01-getting-started/`:
+- [x] **0.1** Baca & pahami seluruh dokumen acuan: `CLAUDE.md`, `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/SCHEMA.md`. Kalau ada yang tidak masuk akal, tanyakan dulu.
+- [x] **0.2** Baca panduan Next.js terkait di `node_modules/next/dist/docs/01-app/01-getting-started/`:
   - `02-project-structure.md` (struktur folder & konvensi)
   - `03-layouts-and-pages.md`
   - `11-css.md` (Tailwind 4 / CSS Modules)
@@ -56,8 +56,8 @@
   - `16-proxy.md` ⚠️ (**di Next 16, `middleware.ts` berganti nama jadi `proxy.ts`**)
   - `15-route-handlers.md` (untuk API di App Router)
   - `12-images.md` (kalau pakai `<Image>`)
-- [ ] **0.3** Pindahkan folder `app/` → `src/app/` sesuai struktur `ARCHITECTURE.md`. Hapus konten boilerplate default `page.tsx` (halaman "Create Next App"). Update `tsconfig.json`: alias `@/*` → `./src/*`, dan pastikan `include` mencakup `src`.
-- [ ] **0.4** Buat struktur folder kosong (boleh sekaligus atau bertahap sesuai fase):
+- [x] **0.3** Pindahkan folder `app/` → `src/app/` sesuai struktur `ARCHITECTURE.md`. Hapus konten boilerplate default `page.tsx` (halaman "Create Next App"). Update `tsconfig.json`: alias `@/*` → `./src/*`, dan pastikan `include` mencakup `src`.
+- [x] **0.4** Buat struktur folder kosong (boleh sekaligus atau bertahap sesuai fase):
   ```
   src/
     app/
@@ -71,24 +71,24 @@
     components/       ui/, shared/
     middleware.ts  ->  GANTI NAMA jadi src/proxy.ts (Next 16!)
   ```
-- [ ] **0.5** Pasang dependency:
+- [x] **0.5** Pasang dependency:
   - Runtime: `npm install drizzle-orm postgres better-auth` (+ `lucide-react` untuk ikon, sesuai DESIGN.md §6)
   - Dev: `npm install -D drizzle-kit tsx zod` (zod untuk validasi input di level aplikasi — CLAUDE.md)
-- [ ] **0.6** Buat `.env.example` (di-track) & `.env.local` (jangan di-track; sudah di `.gitignore`):
+- [x] **0.6** Buat `.env.example` (di-track) & `.env.local` (jangan di-track; sudah di `.gitignore`):
   ```
   DATABASE_URL=postgresql://...       # connection string Supabase
   BETTER_AUTH_SECRET=...              # generate: openssl rand -base64 32
   BETTER_AUTH_URL=http://localhost:3000
   ```
-- [ ] **0.7** Jalankan `npm run dev` → pastikan app berjalan tanpa error. Commit:
+- [x] **0.7** Jalankan `npm run dev` → pastikan app berjalan tanpa error. Commit:
   `chore: setup project structure and dependencies`
 
 ### Definition of Done (Fase 0)
 
-- [ ] App berjalan di `http://localhost:3000` tanpa error.
-- [ ] Struktur `src/` terbentuk, `app/` di root sudah kosong/dihapus.
-- [ ] `npm run lint` & `npm run build` hijau.
-- [ ] `.env.local` ada, `.env.example` di-commit, `.env.local` tidak ter-commit.
+- [x] App berjalan di `http://localhost:3000` tanpa error.
+- [x] Struktur `src/` terbentuk, `app/` di root sudah kosong/dihapus.
+- [x] `npm run lint` & `npm run build` hijau.
+- [x] `.env.local` ada, `.env.example` di-commit, `.env.local` tidak ter-commit.
 
 > ⚠️ **Peringatan:** jangan pernah menaruh secret di kode/commit. Kalau `DATABASE_URL` belum punya Supabase project, tanyakan ke user dulu sebelum lanjut.
 

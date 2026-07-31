@@ -31,7 +31,7 @@
 ## 1. Progress Tracker
 
 - [x] **Fase 0 — Setup Project & Struktur Folder**
-- [ ] **Fase 1 — Database Layer (Drizzle) & Seed**
+- [x] **Fase 1 — Database Layer (Drizzle) & Seed**
 - [ ] **Fase 2 — Autentikasi & Otorisasi (better-auth)**
 - [ ] **Fase 3 — Design System & Layout Per Role**
 - [ ] **Fase 4 — Fitur Admin**
@@ -100,10 +100,10 @@
 
 ### Task
 
-- [ ] **1.1** Baca `docs/SCHEMA.md` **selengkapnya** dan panduan Drizzle (Context7 / `drizzle-team/drizzle-orm-docs`):
+- [x] **1.1** Baca `docs/SCHEMA.md` **selengkapnya** dan panduan Drizzle (Context7 / `drizzle-team/drizzle-orm-docs`):
   - `get-started-postgresql` (driver `postgres` + `drizzle-orm/postgres-js`)
   - `drizzle-kit-push` & `drizzle-kit-migrate`
-- [ ] **1.2** Buat `src/db/schema.ts`:
+- [x] **1.2** Buat `src/db/schema.ts`:
   - **Tabel auth (better-auth):** `user` (tambah kolom **`role`** enum `admin|ustadz|wali`), `session`, `account`, `verification` — ikuti contoh schema resmi better-auth untuk Drizzle/Postgres (lihat referensi di bawah).
     - ⚠️ **Catatan deviasi dari SCHEMA.md:** better-auth secara default memakai **`text` sebagai tipe `id`** (bukan `uuid`) untuk tabel auth-nya. Ikuti default better-auth, dan **FK dari tabel aplikasi ke `user.id` harus bertipe `text`** mengikuti `user.id`. Kalau dipaksa `uuid`, aktifkan plugin `user` dengan konfigurasi id (baca docs better-auth) — tapi jangan ubah tanpa alasan kuat.
   - **Tabel aplikasi:** `kelas`, `santri`, `wali_santri`, `kitab`, `halaman`, `pencapaian` — PERSIS seperti `SCHEMA.md` §2 (kolom, tipe, default, unique, index).
@@ -114,7 +114,7 @@
     - `pencapaian`: unique `(santri_id, halaman_id)` + index `santri_id` & `halaman_id`.
     - `wali_santri`: unique `(wali_id, santri_id)`.
     - **JANGAN** tambah `CHECK` constraint untuk persentase — validasi 0-100 cukup di level aplikasi (CLAUDE.md).
-- [ ] **1.3** Buat `src/db/index.ts` — koneksi Drizzle ke Postgres:
+- [x] **1.3** Buat `src/db/index.ts` — koneksi Drizzle ke Postgres:
   ```ts
   import { drizzle } from 'drizzle-orm/postgres-js';
   import postgres from 'postgres';
@@ -122,7 +122,7 @@
   export const db = drizzle({ client: queryClient });
   ```
   (Tambahkan export `{ schema }` untuk relational queries bila diperlukan.)
-- [ ] **1.4** Buat `drizzle.config.ts`:
+- [x] **1.4** Buat `drizzle.config.ts`:
   ```ts
   export default defineConfig({
     schema: './src/db/schema.ts',
@@ -130,23 +130,30 @@
     dbCredentials: { url: process.env.DATABASE_URL! },
   });
   ```
-- [ ] **1.5** Jalankan `npx drizzle-kit push` (untuk dev, Supabase) — pastikan semua tabel terbuat. *Konfirmasi ke user dulu bila ada perubahan yang menyentuh data existing.*
-- [ ] **1.6** Buat `src/db/seed.ts` (jalankan dengan `npx tsx src/db/seed.ts`) yang mengisi data contoh minimal:
+  (Catatan: file ini juga load `.env.local` via `dotenv` — lihat Catatan di bawah.)
+- [x] **1.5** Jalankan `npx drizzle-kit push` (untuk dev, Supabase) — pastikan semua tabel terbuat. *Konfirmasi ke user dulu bila ada perubahan yang menyentuh data existing.*
+- [x] **1.6** Buat `src/db/seed.ts` (jalankan dengan `npm run db:seed`) yang mengisi data contoh minimal:
   - 1 user `admin`, 2 user `ustadz`, 2-3 user `wali`
   - 2-3 `kelas`, 3-5 `santri`
   - 3 `kitab` dengan jumlah halaman berbeda + `halaman` auto-generate untuk tiap kitab
   - Relasi `wali_santri` (misal 1 wali punya 2 santri)
   - Beberapa baris `pencapaian` untuk uji progress
-- [ ] **1.7** Verifikasi: tulis query Drizzle sederhana (misal `select` kitab + `innerJoin` halaman) di file uji sementara, pastikan data terbaca. Hapus file uji setelah verifikasi.
-- [ ] **1.8** Commit: `feat(db): schema, connection, and seed data`
+- [x] **1.7** Verifikasi: tulis query Drizzle sederhana (misal `select` kitab + `innerJoin` halaman) di file uji sementara, pastikan data terbaca. Hapus file uji setelah verifikasi.
+- [x] **1.8** Commit: `feat(db): schema, connection, and seed data`
 
 ### Definition of Done (Fase 1)
 
-- [ ] Semua tabel (auth + aplikasi) sudah ada di database (cek via Supabase dashboard / psql).
-- [ ] Seed jalan tanpa error dan data bisa di-query.
-- [ ] `npm run lint` & `npm run build` hijau.
+- [x] Semua tabel (auth + aplikasi) sudah ada di database (cek via Supabase dashboard / psql).
+- [x] Seed jalan tanpa error dan data bisa di-query.
+- [x] `npm run lint` & `npm run build` hijau.
 
 > ⚠️ **Peringatan:** tabel `pencapaian` menyimpan **nilai terakhir saja** per `(santri, halaman)` — operasi tulis wajib `UPSERT` (bukan `INSERT` baru tiap dinilai ulang). Ini keputusan PRD #9, jangan dilanggar.
+
+> 📝 **Catatan Fase 1 (deviasi/langkah yang ditemukan saat implementasi):**
+> - `.env.local` yang dibuat di Fase 0 sempat tidak bisa dipakai: `DATABASE_URL` diapit tanda kutip `"..."` dan password berisi karakter spesial (`&`, `#`) yang tidak di-URL-encode → koneksi gagal `ERR_INVALID_URL`. Sudah diperbaiki (kutip dihapus, password di-`encodeURIComponent`). Ini hanya di `.env.local` (tidak di-track).
+> - `drizzle-kit` tidak otomatis membaca `.env.local` (hanya `.env`). Solusi: install `dotenv` (devDependency) dan panggil `config({ path: ".env.local" })` di `drizzle.config.ts`. Tambah script npm `db:push`, `db:seed`, `db:studio`.
+> - Seed memakai instance `better-auth` inline (mirip `lib/auth.ts` Fase 2) lewat `auth.api.signUpEmail` supaya hash password valid & bisa login. Konfigurasi ini akan dipakai lagi di Fase 2 — jangan lupa selaraskan.
+> - Verifikasi tambahan: `signInEmail` admin sukses & password salah ditolak — konfirmasi bahwa hash seed benar.
 
 ---
 

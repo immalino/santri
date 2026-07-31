@@ -4,6 +4,8 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { roleHome, type Role } from "@/lib/roles";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -37,21 +39,21 @@ export default function LoginForm() {
     <div className="flex min-h-full flex-1 items-center justify-center px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-[#1F2A24]">
+          <h1 className="text-2xl font-semibold text-ink">
             Sistem Pendataan Pencapaian Santri
           </h1>
-          <p className="mt-1 text-sm text-[#6B7568]">Silakan masuk dengan akun Anda.</p>
+          <p className="mt-1 text-sm text-ink-secondary">Silakan masuk dengan akun Anda.</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 rounded-2xl border border-[#E5DFD0] bg-white p-6 shadow-sm"
+          className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-sm"
         >
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-[#1F2A24]">
+            <label htmlFor="email" className="mb-1 block text-sm font-medium text-ink">
               Email
             </label>
-            <input
+            <Input
               id="email"
               type="email"
               required
@@ -59,15 +61,14 @@ export default function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="nama@email.com"
-              className="w-full rounded-xl border border-[#E5DFD0] px-3 py-3 text-sm text-[#1F2A24] outline-none focus:border-[#0E6B4F] focus:ring-2 focus:ring-[#0E6B4F]/20"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-[#1F2A24]">
+            <label htmlFor="password" className="mb-1 block text-sm font-medium text-ink">
               Password
             </label>
-            <input
+            <Input
               id="password"
               type="password"
               required
@@ -75,21 +76,16 @@ export default function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-xl border border-[#E5DFD0] px-3 py-3 text-sm text-[#1F2A24] outline-none focus:border-[#0E6B4F] focus:ring-2 focus:ring-[#0E6B4F]/20"
             />
           </div>
 
           {error && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="min-h-[44px] w-full rounded-xl bg-[#0E6B4F] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#0A4F3A] disabled:cursor-not-allowed disabled:opacity-60"
-          >
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Memproses..." : "Masuk"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

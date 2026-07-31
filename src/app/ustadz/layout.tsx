@@ -2,13 +2,18 @@ import type { ReactNode } from "react";
 import { requireRole } from "@/lib/permissions";
 import type { Role } from "@/lib/roles";
 import TopBar from "@/components/shared/top-bar";
+import RoleNav from "@/components/shared/role-nav";
 
 export default async function UstadzLayout({ children }: { children: ReactNode }) {
   const session = await requireRole(["ustadz"]);
   return (
-    <div className="flex min-h-full flex-col bg-[#FAF7F0]">
+    <div className="flex min-h-full flex-col bg-background">
       <TopBar userName={session.user.name} role={session.user.role as Role} />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
+      <RoleNav role="ustadz" />
+      {/* pb-24 keeps content clear of the fixed mobile bottom nav. */}
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 pb-24 md:pb-6">
+        {children}
+      </main>
     </div>
   );
 }

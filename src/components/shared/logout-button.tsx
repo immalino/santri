@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { Button } from "@/components/ui/button";
 
 export default function LogoutButton() {
   const router = useRouter();
@@ -16,13 +18,15 @@ export default function LogoutButton() {
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="secondary"
       onClick={handleLogout}
       disabled={loading}
-      className="min-h-[44px] rounded-xl border border-[#E5DFD0] bg-white px-4 text-sm font-medium text-[#1F2A24] transition-colors hover:bg-[#FAF7F0] disabled:opacity-60"
+      aria-label="Keluar"
     >
+      <LogOut className="h-4 w-4" aria-hidden />
       {loading ? "..." : "Keluar"}
-    </button>
+    </Button>
   );
 }

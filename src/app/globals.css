@@ -1,5 +1,57 @@
 @import "tailwindcss";
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
+/* Class-based dark mode (DESIGN.md §7). The `.dark` class is applied in
+   Phase 7; the token overrides below already switch every utility. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* DESIGN.md §2 — palette (light). Runtime CSS variables so the values can be
+   swapped under `.dark` (see @theme inline below). */
+:root {
+  --primary: #0e6b4f;
+  --primary-dark: #0a4f3a;
+  --accent: #c99a2e;
+  --background: #faf7f0;
+  --surface: #ffffff;
+  --border: #e5dfd0;
+  --ink: #1f2a24; /* DESIGN text-primary */
+  --ink-secondary: #6b7568; /* DESIGN text-secondary */
+  --success: #2e9e5b;
+  --warning: #d98e2a;
+  --danger: #c1443c;
+}
+
+/* DESIGN.md §7 — dark variant (contrast-adjusted green/gold, dark surfaces). */
+.dark {
+  --primary: #16a37c;
+  --primary-dark: #12805f;
+  --accent: #d9a93f;
+  --background: #0f1a15;
+  --surface: #17241e;
+  --border: #26352d;
+  --ink: #e8efea;
+  --ink-secondary: #9aa8a0;
+  --success: #3dbb74;
+  --warning: #e2a44a;
+  --danger: #d96059;
+}
+
+/* Map DESIGN.md tokens to Tailwind 4 color utilities.
+   Note: `text-primary`/`text-secondary` would collide with Tailwind's
+   `text-*` color utilities, so they are exposed as `ink`/`ink-secondary`
+   (deviation from the token names in IMPLEMENTATION.md task 3.2). */
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-accent: var(--accent);
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-ink: var(--ink);
+  --color-ink-secondary: var(--ink-secondary);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
+  /* Plus Jakarta Sans loaded via next/font (src/app/layout.tsx). */
+  --font-sans: var(--font-plus-jakarta-sans, ui-sans-serif, system-ui, sans-serif);
 }

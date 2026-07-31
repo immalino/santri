@@ -7,25 +7,24 @@ interface TopBarProps {
 }
 
 /**
- * Shared top bar for role pages: app name + user info + logout.
- * Navigation per role is added in Phase 3.
+ * Shared top bar for role pages (DESIGN.md §4): placeholder logo + app name
+ * on the left, user info + logout on the right. Navigation is rendered
+ * separately by <RoleNav />.
  */
 export default function TopBar({ userName, role }: TopBarProps) {
   return (
-    <header className="border-b border-[#E5DFD0] bg-white">
+    <header className="sticky top-0 z-30 border-b border-border bg-surface">
       <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#0E6B4F] text-sm font-bold text-white">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
             S
           </span>
-          <span className="truncate text-sm font-semibold text-[#1F2A24]">
-            Pencapaian Santri
-          </span>
+          <span className="truncate text-sm font-semibold text-ink">Pencapaian Santri</span>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <div className="text-right">
-            <p className="text-sm font-medium text-[#1F2A24]">{userName}</p>
-            <p className="text-xs text-[#6B7568]">{roleLabel[role]}</p>
+          <div className="hidden text-right sm:block">
+            <p className="text-sm font-medium text-ink">{userName}</p>
+            <p className="text-xs text-ink-secondary">{roleLabel[role]}</p>
           </div>
           <LogoutButton />
         </div>

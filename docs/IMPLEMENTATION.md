@@ -33,7 +33,7 @@
 - [x] **Fase 0 — Setup Project & Struktur Folder**
 - [x] **Fase 1 — Database Layer (Drizzle) & Seed**
 - [x] **Fase 2 — Autentikasi & Otorisasi (better-auth)**
-- [ ] **Fase 3 — Design System & Layout Per Role**
+- [x] **Fase 3 — Design System & Layout Per Role**
 - [ ] **Fase 4 — Fitur Admin**
 - [ ] **Fase 5 — Fitur Ustadz**
 - [ ] **Fase 6 — Fitur Wali Santri**
@@ -231,35 +231,46 @@
 
 ### Task
 
-- [ ] **3.1** Baca `docs/DESIGN.md` lengkap. Pasang font **Plus Jakarta Sans** (atau Inter) via `next/font/google` di `src/app/layout.tsx` (ganti Geist default).
-- [ ] **3.2** Tokens desain di `src/app/globals.css` memakai Tailwind 4 (`@theme`):
+- [x] **3.1** Baca `docs/DESIGN.md` lengkap. Pasang font **Plus Jakarta Sans** (atau Inter) via `next/font/google` di `src/app/layout.tsx` (ganti Geist default).
+- [x] **3.2** Tokens desain di `src/app/globals.css` memakai Tailwind 4 (`@theme`):
   - `primary #0E6B4F`, `primary-dark #0A4F3A`, `accent #C99A2E`, `background #FAF7F0`, `surface #FFFFFF`, `border #E5DFD0`, `text-primary #1F2A24`, `text-secondary #6B7568`, `success/warning/danger`.
   - Tambahkan varian **dark mode** (DESIGN.md §7) — bisa lewat class strategy.
-- [ ] **3.3** Komponen UI dasar di `src/components/ui/` (Tailwind custom, **tanpa shadcn/library**):
+- [x] **3.3** Komponen UI dasar di `src/components/ui/` (Tailwind custom, **tanpa shadcn/library**):
   - `Button.tsx` (primary/secondary/danger, min-height 44px)
   - `Card.tsx` (`rounded-2xl`, `shadow-sm`, surface)
   - `Input.tsx`, `Select.tsx` (border, `rounded-xl`, focus ring primary)
   - `Badge.tsx` (status aktif=success, nonaktif=secondary)
   - `ProgressBar.tsx` (tinggi 8-10px, `rounded-full`, gradasi hijau→gold sesuai persentase: 0% abu-abu → 100% gold)
-- [ ] **3.4** Layout per role (`src/app/(...)/layout.tsx`):
+- [x] **3.4** Layout per role (`src/app/(...)/layout.tsx`):
   - Top bar: nama yayasan/placeholder logo + avatar/menu.
   - Bottom nav (mobile) → top nav horizontal (desktop) sesuai DESIGN.md §4:
     - Admin: Dashboard, Kitab, Santri, Lainnya (Ustadz/Wali)
     - Ustadz: Input Nilai, Riwayat
     - Wali: Progress (+ dropdown switch santri bila >1)
   - `(auth)/login` tanpa nav.
-- [ ] **3.5** Buat halaman placeholder tiap route group (judul + tombol navigasi) supaya navigasi bisa dites: `(admin)/dashboard`, `kitab`, `santri`, `ustadz`, `wali`, `(ustadz)/input`, `riwayat`, `(wali)/progress`.
-- [ ] **3.6** Halaman `not-found.tsx` (global) + `error.tsx` dasar + `loading.tsx` di beberapa halaman.
-- [ ] **3.7** Commit: `feat(ui): design system tokens, base components, and role layouts`
+- [x] **3.5** Buat halaman placeholder tiap route group (judul + tombol navigasi) supaya navigasi bisa dites: `(admin)/dashboard`, `kitab`, `santri`, `ustadz`, `wali`, `(ustadz)/input`, `riwayat`, `(wali)/progress`.
+- [x] **3.6** Halaman `not-found.tsx` (global) + `error.tsx` dasar + `loading.tsx` di beberapa halaman.
+- [x] **3.7** Commit: `feat(ui): design system tokens, base components, and role layouts`
 
 ### Definition of Done (Fase 3)
 
-- [ ] Navigasi per role tampil dan aktif sesuai route.
-- [ ] Komponen dasar dipakai konsisten (tidak ada styling ad-hoc yang menyimpang jauh dari token).
-- [ ] Tampilan rapi di ukuran mobile (320px) dan desktop.
-- [ ] `npm run lint` & `npm run build` hijau.
+- [x] Navigasi per role tampil dan aktif sesuai route.
+- [x] Komponen dasar dipakai konsisten (tidak ada styling ad-hoc yang menyimpang jauh dari token).
+- [x] Tampilan rapi di ukuran mobile (320px) dan desktop.
+- [x] `npm run lint` & `npm run build` hijau.
 
 > ⚠️ **Peringatan:** UI text wajib Bahasa Indonesia; nama class/komponen/variabel tetap Bahasa Inggris. Jangan pasang library komponen — cukup Tailwind.
+
+> 📝 **Catatan Fase 3 (deviasi/langkah yang ditemukan saat implementasi):**
+> - **Token `text-primary`/`text-secondary` dinamai `ink`/`ink-secondary` di Tailwind.** Nama persis dari DESIGN.md bentrok dengan utility `text-*` (warna teks) di Tailwind 4, sehingga `--color-text-primary` akan menghasilkan class `text-text-primary` yang janggal. Diputuskan pakai `ink` (teks utama) & `ink-secondary` (teks sekunder) — pemetaan ke DESIGN.md dicatat sebagai komentar di `globals.css`. Class lain ikut token: `bg-primary`, `bg-surface`, `border-border`, `bg-background`, `text-danger`, dll.
+- **Dark mode baru level infrastruktur (bukan final):** `globals.css` memakai `@theme inline` + CSS vars `:root`/`.dark` + `@custom-variant dark`, jadi utility seperti `dark:bg-background` sudah siap. **Toggle belum dibuat** — itu task 7.1 (Fase 7). Nilai gelap sementara mengikuti DESIGN.md §7.
+- **`error.tsx` di Next 16 memakai prop `unstable_retry`** (bukan `reset` seperti Next 15) — sesuai `node_modules/next/dist/docs/.../error.md`. `error.tsx` global + `not-found.tsx` global + `loading.tsx` global sudah dibuat.
+- **lucide-react 1.28.0 merename beberapa ikon:** `History` → `Clock`, `MoreHorizontal` → `Ellipsis`, `Home` → `House`. `role-nav.tsx` memakai nama versi baru (Riwayat pakai `Clock`).
+- **`Button` dipecah jadi `Button` (element `<button>`) + `ButtonLink` (Next `<Link>`)** dengan helper `buttonStyles()` yang sama. Awalnya satu komponen dengan `href` opsional, tapi spread props `<button>` ke `<Link>` gagal type-check (event handler `HTMLButtonElement` vs `HTMLAnchorElement` tidak kompatibel).
+- **`RoleNav` (client component) berisi semua item nav per role** — hanya impor dari `@/lib/roles` (bukan `permissions`) sesuai aturan Fase 2, supaya Postgres tidak ikut ke bundle client.
+- **Root `/` kadang di-curl mengembalikan 200 dengan payload `NEXT_REDIRECT`** (bukan 307) karena ada `loading.tsx` global → streaming fallback. Ini perilaku normal; browser mengikuti redirect di stream. Terverifikasi: tanpa cookie `/admin/*` → 307 ke `/login`, `/login` 200, URL tak dikenal → 404 baru.
+- **Belum dibersihkan:** folder route group kosong `(admin)/`, `(ustadz)/`, `(wali)/` (hanya berisi `.gitkeep`) masih ada dari Fase 0 — tidak menghasilkan route apa pun (dead folder). Penghapusan ditunda karena butuh konfirmasi (jangan di-`rm -rf` tanpa persetujuan). Usulan: hapus kapan saja kalau disetujui.
+- **QA visual (320px/desktop) belum dicek di browser sungguhan** — implementasi responsif (bottom nav mobile / top nav desktop, `max-w-5xl`, grid breakpoints) sudah terpasang & build hijau; **pass visual menyeluruh dijadwalkan di task 7.3 (Fase 7).**
 
 ---
 

@@ -47,6 +47,12 @@ npm run build
 
 Kalau ada error, perbaiki dulu sebelum commit — jangan commit kode yang gagal lint/build.
 
+## Update Checklist IMPLEMENTATION.md
+
+- Setiap selesai mengerjakan task/fase, centang checklist di `docs/IMPLEMENTATION.md`: task yang selesai + Definition of Done + Progress Tracker di bagian atas, lalu perbarui tanggal `Terakhir di-update`.
+- Hanya centang task yang benar-benar selesai dan terverifikasi (`npm run lint` & `npm run build` hijau) — jangan centang saat baru mulai mengerjakan.
+- Kalau menemukan langkah/deviasi baru di tengah jalan, catat di bawah fase terkait di `docs/IMPLEMENTATION.md` — jangan diam saja.
+
 ## Git & Commit
 
 - Commit **kecil dan sering**, per fitur/perubahan logis (bukan satu commit besar di akhir).

@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BookOpenText, Check, Minus, Plus, Save, UsersRound } from "lucide-react";
+import { BookOpenText, Check, Save, UsersRound } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { PageGrid } from "@/components/ustadz/page-grid";
 
 interface SantriOption {
   id: string;
@@ -27,67 +28,68 @@ interface PageScore {
   persentase: number | null;
 }
 
-/** Percentage stepper row for one halaman (grading input). */
-function GradeRow({
-  nomorHalaman,
+const PRESETS = [0, 25, 50, 75, 100];
+
+/** Sticky bulk-set bar shown while pages are selected (task 5.2 redesign). */
+function BulkBar({
+  count,
   value,
-  onChange,
+  onValueChange,
+  onApply,
+  onClear,
 }: {
-  nomorHalaman: number;
-  value: number;
-  onChange: (v: number) => void;
+  count: number;
+  value: string;
+  onValueChange: (v: string) => void;
+  onApply: (v: number) => void;
+  onClear: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 py-3">
-      <span className="w-20 shrink-0 text-sm font-semibold text-ink">
-        Halaman {nomorHalaman}
-      </span>
-
-      <div className="flex flex-1 items-center gap-3">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => onChange(Math.max(0, value - 5))}
-          aria-label={`Kurangi nilai halaman ${nomorHalaman}`}
-        >
-          <Minus className="h-4 w-4" aria-hidden />
+    <div className="rounded-xl border border-border bg-background/60 p-2.5">
+      <div className="flex flex-wrap items-center gap-2 p-2.5">
+        <span className="px-1 text-sm font-semibold text-ink">{count} halaman dipilih</span>
+        <Button type="button" size="sm" variant="ghost" onClick={onClear}>
+          Bersihkan
         </Button>
-
-        <input
-          type="range"
-          min={0}
-          max={100}
-          step={5}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="h-2 flex-1 accent-[var(--primary)]"
-          aria-label={`Persentase halaman ${nomorHalaman}`}
-        />
-
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => onChange(Math.min(100, value + 5))}
-          aria-label={`Tambah nilai halaman ${nomorHalaman}`}
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-        </Button>
-
-        <span className="w-12 shrink-0 text-right text-sm font-medium tabular-nums text-ink-secondary">
-          {value}%
-        </span>
+        <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
+        {PRESETS.map((p) => (
+          <Button key={p} type="button" size="sm" variant="secondary" onClick={() => onApply(p)}>
+            {p}%
+          </Button>
+        ))}
+        <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
+        <div className="flex items-center gap-1.5">
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={value}
+            onChange={(e) => onValueChange(e.target.value)}
+            placeholder="0-100"
+            aria-label="Nilai untuk halaman terpilih"
+            className="w-24 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-secondary/70 focus:border-primary focus:ring-2 focus:ring-primary/20"
+          />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              const v = Number(value);
+              if (Number.isFinite(v)) onApply(v);
+            }}
+          >
+            Terapkan
+          </Button>
+        </div>
       </div>
     </div>
   );
 }
 
 /**
- * Ustadz grading page (tasks 5.2–5.4): pick a santri + kitab, then grade every
- * page with a slider/stepper and save the whole sheet at once (sticky Save on
- * mobile). Existing values are preloaded so a re-grade starts from the last
- * values instead of from scratch.
+ * Ustadz grading page (tasks 5.2–5.4): pick a santri + kitab, then grade pages
+ * on a color-filled grid. Tap a box toggles selection; long-press & drag
+ * paint-selects many boxes, then the bulk bar sets them all to one value.
+ * Existing values are preloaded so a re-grade starts from the last values.
  */
 export default function UstadzInputPage() {
   const [santris, setSantris] = useState<SantriOption[]>([]);
@@ -97,6 +99,8 @@ export default function UstadzInputPage() {
   const [query, setQuery] = useState("");
   const [pages, setPages] = useState<PageScore[]>([]);
   const [values, setValues] = useState<Record<string, number>>({});
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkValue, setBulkValue] = useState("");
   const [loadingData, setLoadingData] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadingSheet, setLoadingSheet] = useState(false);
@@ -172,12 +176,54 @@ export default function UstadzInputPage() {
   const selectedSantri = santris.find((s) => s.id === santriId);
   const selectedKitab = kitabs.find((k) => k.id === kitabId);
 
-  function setPageValue(halamanId: string, v: number) {
-    setValues((prev) => ({ ...prev, [halamanId]: v }));
+  // Pages whose current edit value differs from the last saved one. Only these
+  // are sent on save, so untouched pages stay "ungraded" (null) instead of
+  // being written as 0.
+  const changedPages = useMemo(() => {
+    if (pages.length === 0) return [];
+    return pages.filter((p) => (values[p.halamanId] ?? 0) !== (p.persentase ?? 0));
+  }, [pages, values]);
+
+  const gradedCount = useMemo(
+    () => pages.filter((p) => (values[p.halamanId] ?? 0) > 0).length,
+    [pages, values],
+  );
+
+  function togglePage(halamanId: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(halamanId)) next.delete(halamanId);
+      else next.add(halamanId);
+      return next;
+    });
+  }
+
+  function paintSelect(halamanId: string) {
+    setSelected((prev) => {
+      if (prev.has(halamanId)) return prev;
+      const next = new Set(prev);
+      next.add(halamanId);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    setSelected(new Set(pages.map((p) => p.halamanId)));
+  }
+
+  function applyBulkValue(v: number) {
+    const clamped = Math.max(0, Math.min(100, Math.round(v)));
+    setValues((prev) => {
+      const next = { ...prev };
+      selected.forEach((id) => {
+        next[id] = clamped;
+      });
+      return next;
+    });
   }
 
   async function handleSave() {
-    if (!santriId || !kitabId || pages.length === 0) return;
+    if (!santriId || !kitabId || pages.length === 0 || changedPages.length === 0) return;
     setSaving(true);
     setMessage(null);
     try {
@@ -186,13 +232,18 @@ export default function UstadzInputPage() {
         body: JSON.stringify({
           santriId,
           kitabId,
-          nilai: pages.map((p) => ({
+          nilai: changedPages.map((p) => ({
             halamanId: p.halamanId,
             persentase: values[p.halamanId] ?? 0,
           })),
         }),
       });
       setMessage({ kind: "success", text: "Nilai berhasil disimpan." });
+      // Treat the just-saved values as the new baseline so the sheet stops
+      // showing "unsaved changes" and the save button disables.
+      setPages((prev) =>
+        prev.map((p) => ({ ...p, persentase: values[p.halamanId] ?? 0 })),
+      );
     } catch (err) {
       setMessage({
         kind: "error",
@@ -265,8 +316,13 @@ export default function UstadzInputPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setSantriId(s.id);
                           setQuery("");
+                          if (s.id === santriId) return;
+                          setSantriId(s.id);
+                          setPages([]);
+                          setSelected(new Set());
+                          setBulkValue("");
+                          setLoadingSheet(true);
                         }}
                         className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors ${
                           s.id === santriId
@@ -295,7 +351,15 @@ export default function UstadzInputPage() {
         <Field label="Pilih Kitab">
           <Select
             value={kitabId}
-            onChange={(e) => setKitabId(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === kitabId) return;
+              setKitabId(v);
+              setPages([]);
+              setSelected(new Set());
+              setBulkValue("");
+              setLoadingSheet(true);
+            }}
             disabled={kitabs.length === 0}
           >
             <option value="">Pilih kitab...</option>
@@ -314,29 +378,79 @@ export default function UstadzInputPage() {
       {/* Grading sheet. */}
       {sheetVisible && (
         <Card className="p-5">
-          <div className="flex items-center gap-2 text-ink">
-            <BookOpenText className="h-5 w-5 text-primary" aria-hidden />
-            <span className="font-semibold">{selectedKitab.namaKitab}</span>
-            <span className="text-sm text-ink-secondary">— {selectedSantri.nama}</span>
-          </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2 text-ink">
+                <BookOpenText className="h-5 w-5 shrink-0 text-primary" aria-hidden />
+                <span className="truncate font-semibold">{selectedKitab.namaKitab}</span>
+                <span className="truncate text-sm text-ink-secondary">
+                  — {selectedSantri.nama}
+                </span>
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-xs text-ink-secondary">
+                  {gradedCount} dari {pages.length} halaman terisi
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={selectAll}
+                  disabled={pages.length === 0}
+                >
+                  <Check className="h-4 w-4" aria-hidden />
+                  Pilih semua
+                </Button>
+              </div>
+            </div>
 
-          <div className="mt-2 divide-y divide-border">
-            {loadingSheet && pages.length === 0 ? (
-              <p className="py-4 text-sm text-ink-secondary">Memuat nilai...</p>
-            ) : pages.length === 0 ? (
-              <p className="py-4 text-sm text-ink-secondary">Tidak ada halaman untuk kitab ini.</p>
-            ) : (
-              pages.map((p) => (
-                <GradeRow
-                  key={p.halamanId}
-                  nomorHalaman={p.nomorHalaman}
-                  value={values[p.halamanId] ?? 0}
-                  onChange={(v) => setPageValue(p.halamanId, v)}
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-secondary">
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  aria-hidden
+                  className="h-2 w-10 rounded-full"
+                  style={{ background: "linear-gradient(90deg, var(--success), var(--accent))" }}
                 />
-              ))
+                0% → 100%
+              </span>
+              <span>Ketuk = pilih satu</span>
+              <span>Tekan lama & seret = pilih banyak</span>
+            </div>
+
+            <div className="mt-3">
+              {loadingSheet && pages.length === 0 ? (
+                <p className="py-4 text-sm text-ink-secondary">Memuat nilai...</p>
+              ) : pages.length === 0 ? (
+                <p className="py-4 text-sm text-ink-secondary">Tidak ada halaman untuk kitab ini.</p>
+              ) : (
+                <PageGrid
+                  pages={pages}
+                  values={values}
+                  selected={selected}
+                  onToggle={togglePage}
+                  onPaintSelect={paintSelect}
+                  onPaintEnd={() => {}}
+                />
+              )}
+            </div>
+
+            {selected.size > 0 && (
+              <div className="mt-3">
+                <BulkBar
+                  count={selected.size}
+                  value={bulkValue}
+                  onValueChange={setBulkValue}
+                  onApply={applyBulkValue}
+                  onClear={() => setSelected(new Set())}
+                />
+              </div>
             )}
-          </div>
-        </Card>
+
+            {changedPages.length === 0 && pages.length > 0 && (
+              <p className="mt-2 text-xs text-ink-secondary">
+                Belum ada perubahan untuk disimpan.
+              </p>
+            )}
+          </Card>
       )}
 
       {/* Save bar — sticky bottom on mobile, inline on desktop. */}
@@ -346,7 +460,7 @@ export default function UstadzInputPage() {
             <Button
               type="button"
               onClick={handleSave}
-              disabled={saving || loadingSheet || pages.length === 0}
+              disabled={saving || loadingSheet || pages.length === 0 || changedPages.length === 0}
               className="w-full"
             >
               <Save className="h-4 w-4" aria-hidden />
@@ -357,7 +471,7 @@ export default function UstadzInputPage() {
             <Button
               type="button"
               onClick={handleSave}
-              disabled={saving || loadingSheet || pages.length === 0}
+              disabled={saving || loadingSheet || pages.length === 0 || changedPages.length === 0}
             >
               <Save className="h-4 w-4" aria-hidden />
               {saving ? "Menyimpan..." : "Simpan Nilai"}

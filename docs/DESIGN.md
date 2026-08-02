@@ -50,7 +50,7 @@ Tidak ada sidebar kompleks seperti referensi — cukup 3-4 menu utama per role d
 
 ### Ustadz
 - Bottom nav: Input Nilai, Riwayat
-- Halaman Input: pilih santri (search/dropdown) → pilih kitab → list halaman dengan slider/stepper persentase per baris, tombol Simpan sticky di bawah (mobile)
+- Halaman Input: pilih santri (search/dropdown) → pilih kitab → **grid kotak halaman** — tiap kotak menampilkan nomor halaman, isi warna kotak (gradasi hijau→gold) setinggi persentase sehingga "penuh/tidaknya" kotak = progres halaman itu; bulk set: tap pilih satu, tekan lama & seret pilih banyak, lalu set semua halaman terpilih ke satu nilai (preset/input kustom); tombol Simpan sticky di bawah (mobile)
 
 ### Wali Santri
 - Bottom nav: Progress, (switch anak via dropdown di top bar kalau >1 santri)

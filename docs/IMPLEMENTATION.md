@@ -367,6 +367,7 @@
 > - **Pilih santri = searchable list** (kotak cari + daftar chip yang bisa diklik), bukan `<select>` native (option-nya tidak bisa difilter). Memenuhi task 5.2 "searchable dropdown".
 > - **Verifikasi DB cepat** via `tsx --env-file=.env.local scripts/verify-fase5.ts` (read-only): GET-merge (37 halaman, 15 dinilai) & agregasi riwayat (4 baris) berjalan benar. Skrip sementara dihapus setelah dipakai.
 > - **Deviasi DoD 5.4:** dokumen menulis "Wali/admin tidak bisa POST", tapi task 5.1 eksplisit `requireApiRole(['ustadz', 'admin'])`. Diikuti task: **admin boleh menilai** (memang dibutuhkan bila ingin mengoreksi), wali tetap 403.
+> - **Redesign UI input nilai (task 5.2, dikonfirmasi user 2026-08-02):** list baris slider/stepper diganti **grid kotak halaman** (`src/components/ustadz/page-grid.tsx`) — tiap kotak menampilkan nomor halaman, isi warna gradasi hijau→gold setinggi persentase (nilai 0/belum dinilai = kotak kosong). Seleksi: **tap cepat** = pilih/batalkan satu kotak; **tekan lama (~350ms) lalu seret** = paint-select banyak kotak (scroll diblokir lewat listener `touchmove` non-passive saat mengecat, drag cepat tetap scroll normal). **Bulk set** via bar sticky (`BulkBar`): preset 0/25/50/75/100% + input kustom + tombol Pilih semua/Bersihkan. **Save hanya halaman yang berubah** (dibanding nilai existing saat preload) — halaman tak tersentuh tetap `null`/belum dinilai, tidak ditulis 0; tombol Simpan disabled saat tidak ada perubahan. `docs/DESIGN.md` §4 disinkronkan.
 
 ---
 

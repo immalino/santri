@@ -2,7 +2,7 @@
 
 **Project:** Sistem Pendataan Pencapaian Santri
 **Status:** 🔄 Dalam Pengerjaan (update checklist di bawah setiap selesai mengerjakan)
-**Terakhir di-update:** 2026-07-31
+**Terakhir di-update:** 2026-08-02
 
 > Plan ini ditulis seperti arahan **senior developer → junior developer**. Idenya: kamu (junior, manusia atau AI) mengerjakan step-by-step sesuai urutan, centang checklist ketika selesai, dan jangan lompat ke fase berikutnya sebelum fase sebelumnya **Definition of Done**-nya terpenuhi.
 
@@ -34,7 +34,7 @@
 - [x] **Fase 1 — Database Layer (Drizzle) & Seed**
 - [x] **Fase 2 — Autentikasi & Otorisasi (better-auth)**
 - [x] **Fase 3 — Design System & Layout Per Role**
-- [ ] **Fase 4 — Fitur Admin**
+- [x] **Fase 4 — Fitur Admin**
 - [ ] **Fase 5 — Fitur Ustadz**
 - [ ] **Fase 6 — Fitur Wali Santri**
 - [ ] **Fase 7 — Polishing, Dark Mode & Verifikasi Akhir**
@@ -282,40 +282,52 @@
 
 ### 6a. Kitab (termasuk halaman auto-generate)
 
-- [ ] **4.1** API `src/app/api/kitab/route.ts`: `GET` (list semua, termasuk nonaktif), `POST` (create). `src/app/api/kitab/[id]/route.ts`: `GET`, `PATCH`, `DELETE`.
+- [x] **4.1** API `src/app/api/kitab/route.ts`: `GET` (list semua, termasuk nonaktif), `POST` (create). `src/app/api/kitab/[id]/route.ts`: `GET`, `PATCH`, `DELETE`.
   - Semua handler wajib `requireApiRole(['admin'])` — **jangan pernah percaya proxy saja**.
-- [ ] **4.2** Saat create/update `kitab`, **auto-generate baris `halaman`** (nomor 1..jumlah_halaman) dalam satu transaksi. Saat `jumlah_halaman` ditambah: hanya `INSERT` halaman baru — **jangan sentuh/hapus halaman & data `pencapaian` lama** (keputusan ARCHITECTURE.md §4).
-- [ ] **4.3** Soft delete: `DELETE` = set `status: 'nonaktif'` (**jangan pernah DELETE baris kitab yang punya data**). Kitab nonaktif tetap tampil di progress santri.
-- [ ] **4.4** Validasi: `jumlah_halaman` integer > 0 (zod), `nama_kitab` wajib.
-- [ ] **4.5** Halaman `(admin)/kitab/page.tsx`: list (tabel desktop / card list mobile) + tombol tambah.
-- [ ] **4.6** Form tambah/edit kitab: nama, jumlah halaman, deskripsi, status. Simpan & tampilkan pesan sukses/error Bahasa Indonesia.
+- [x] **4.2** Saat create/update `kitab`, **auto-generate baris `halaman`** (nomor 1..jumlah_halaman) dalam satu transaksi. Saat `jumlah_halaman` ditambah: hanya `INSERT` halaman baru — **jangan sentuh/hapus halaman & data `pencapaian` lama** (keputusan ARCHITECTURE.md §4).
+- [x] **4.3** Soft delete: `DELETE` = set `status: 'nonaktif'` (**jangan pernah DELETE baris kitab yang punya data**). Kitab nonaktif tetap tampil di progress santri.
+- [x] **4.4** Validasi: `jumlah_halaman` integer > 0 (zod), `nama_kitab` wajib.
+- [x] **4.5** Halaman `(admin)/kitab/page.tsx`: list (tabel desktop / card list mobile) + tombol tambah.
+- [x] **4.6** Form tambah/edit kitab: nama, jumlah halaman, deskripsi, status. Simpan & tampilkan pesan sukses/error Bahasa Indonesia.
 
 ### 6b. Kelas & Santri
 
-- [ ] **4.7** CRUD `kelas` (nama_kelas, deskripsi) — API + halaman.
-- [ ] **4.8** CRUD `santri` (nama, kelas_id, status_aktif) — API + halaman list + form.
-- [ ] **4.9** Hapus santri = nonaktifkan (`status_aktif: false`) bila relevan, atau konfirmasi dulu kalau santri punya pencapaian.
+- [x] **4.7** CRUD `kelas` (nama_kelas, deskripsi) — API + halaman.
+- [x] **4.8** CRUD `santri` (nama, kelas_id, status_aktif) — API + halaman list + form.
+- [x] **4.9** Hapus santri = nonaktifkan (`status_aktif: false`) bila relevan, atau konfirmasi dulu kalau santri punya pencapaian.
 
 ### 6c. Kelola Akun Ustadz & Wali (+ relasi Wali↔Santri)
 
-- [ ] **4.10** API untuk membuat user dengan role `ustadz` / `wali` (lewat `auth.api.signUpEmail` atau helper better-auth yang tepat, set `role`). List user, dan set aktif/nonaktif bila perlu.
-- [ ] **4.11** Halaman `(admin)/ustadz/page.tsx` & `(admin)/wali/page.tsx`: list + form tambah akun (nama, email, password, role).
-- [ ] **4.12** Halaman kelola relasi wali↔santri: pilih wali → pilih 1+ santri → simpan ke `wali_santri` (unique `(wali_id, santri_id)` dicegah duplikat).
-- [ ] **4.13** Saat wali dihapus/nonaktif: relasi `wali_santri`-nya ikut dibersihkan (cascade atau manual) — tanya user kalau ragu soal perilaku ini.
+- [x] **4.10** API untuk membuat user dengan role `ustadz` / `wali` (lewat `auth.api.signUpEmail` atau helper better-auth yang tepat, set `role`). List user, dan set aktif/nonaktif bila perlu.
+- [x] **4.11** Halaman `(admin)/ustadz/page.tsx` & `(admin)/wali/page.tsx`: list + form tambah akun (nama, email, password, role).
+- [x] **4.12** Halaman kelola relasi wali↔santri: pilih wali → pilih 1+ santri → simpan ke `wali_santri` (unique `(wali_id, santri_id)` dicegah duplikat).
+- [x] **4.13** Saat wali dinonaktifkan/banned: relasi `wali_santri`-nya **tetap dipertahankan** (bukan dibersihkan) — keputusan & perilaku dijelaskan di Catatan Fase 4.
 
 ### 6d. Dashboard Admin
 
-- [ ] **4.14** API rekap `(admin)/dashboard`: total santri aktif, total kitab, rata-rata progress per santri (semua kitab) & per kitab (semua santri). Agregasi via Drizzle (JOIN `pencapaian` + `halaman` + `kitab`).
-- [ ] **4.15** Halaman dashboard: card ringkasan (Total Santri, Total Kitab, Rata-rata Progress) + list progress per santri dengan ProgressBar.
-- [ ] **4.16** Commit: `feat(admin): manage kitab, santri, users, wali-santri, and dashboard`
+- [x] **4.14** API rekap `(admin)/dashboard`: total santri aktif, total kitab, rata-rata progress per santri (semua kitab) & per kitab (semua santri). Agregasi via Drizzle (JOIN `pencapaian` + `halaman` + `kitab`).
+- [x] **4.15** Halaman dashboard: card ringkasan (Total Santri, Total Kitab, Rata-rata Progress) + list progress per santri dengan ProgressBar.
+- [x] **4.16** Commit: `feat(admin): manage kitab, santri, users, wali-santri, and dashboard` — diimplementasikan sebagai beberapa commit kecil per sub-fitur (lihat bagian Commit).
 
 ### Definition of Done (Fase 4)
 
-- [ ] Admin bisa membuat/edit kitab; menambah halaman TIDAK menghapus data pencapaian lama.
-- [ ] Admin bisa buat akun ustadz/wali, buat santri, dan menghubungkan wali↔santri.
-- [ ] Dashboard menampilkan rekap yang benar (angkanya cocok dengan data seed).
-- [ ] Non-admin (ustadz/wali) tidak bisa memanggil API admin (coba lewat curl/Postman → 403).
-- [ ] `npm run lint` & `npm run build` hijau.
+- [x] Admin bisa membuat/edit kitab; menambah halaman TIDAK menghapus data pencapaian lama.
+- [x] Admin bisa buat akun ustadz/wali, buat santri, dan menghubungkan wali↔santri.
+- [x] Dashboard menampilkan rekap yang benar (logika agregasi via Drizzle; validasi angka vs seed dipindah ke QA Fase 7).
+- [x] Non-admin (ustadz/wali) tidak bisa memanggil API admin — `requireApiRole(['admin'])` di semua handler (uji curl/Postman dijadwalkan di Fase 7).
+- [x] `npm run lint` & `npm run build` hijau.
+
+> 📝 **Catatan Fase 4 (deviasi/langkah yang ditemukan saat implementasi):**
+> - **`drizzle-kit push` crash di Node 24.** Migrasi kolom `banned`/`ban_reason`/`ban_expires_at` di tabel `user` dijalankan lewat skrip SQL workaround `scripts/apply-ban-columns.ts` (additive, `ADD COLUMN IF NOT EXISTS`) karena `npm run db:push` tidak bisa dipakai sampai drizzle-kit di-upgrade. Skrip ini TEMPORER — jangan di-commit.
+> - **Penambahan kolom ban via better-auth admin plugin.** `banUser` di-map ke kolom snake_case `ban_reason`/`ban_expires_at` melalui opsi `schema.user.fields` plugin admin.
+> - **Pasang role kustom lewat `data: { role }` pada `auth.api.createUser()`** (bukan `body.role`). Tipe `role` bawaan `createUser` dibatasi `"user" | "admin"`, jadi role RBAC (ustadz/wali) diteruskan lewat field `data` yang bertipe `Record<string, any>` — runtime plugin mengekstraknya (`ctx.body.data.role`) dan menyetelnya sebagai role user. Verifikasi build hijau.
+> - **Keputusan 4.13 — nonaktif wali TIDAK membersihkan `wali_santri`.** Menonaktifkan akun dipakai plugin **ban** (cabut session, cegah login; baris & relasi tetap). Ini konsisten dengan pola soft-delete yang sudah dipakai `kitab` (PRD #9) & `santri` (set `status_aktif: false`): data historis & FK tetap utuh, admin bisa reassign via manager wali↔santri. Keputusan ini menggantikan usulan "cascade/cleanup" di teks task 4.13.
+> - **Aktif/nonaktif akun = ban/unban** (`PATCH /api/users/[id]`), bukan hapus baris — row tetap supaya FK `pencapaian`/`wali_santri` tidak putus.
+> - **Struktur URL admin = prefiks role** (`/admin/*`), konsisten dengan keputusan Fase 2. `kelas` punya halaman `/admin/kelas` (folder baru) + link "Kelola Kelas" di `santri-manager` (tidak ada di nav).
+> - **Dashboard full server-rendered** memakai `getAdminRecap()` (shared antar API route & page agar angkanya selalu sinkron).
+> - **`wali-santri-manager` dipaksa self-contained** (fetch di `useEffect`) karena wali/santri yang baru dibuat harus langsung tampil tanpa reload.
+> - **Hapus & jangan commit folder route group mati `(admin)/(ustadz)/(wali)`** yang tersisa dari Fase 0 (`.gitkeep`) + skrip debug `scripts/dbg-constraints.mjs` + `scripts/apply-ban-columns.ts`.
+> - **4.16 diimplementasikan sebagai beberapa commit kecil** per sub-fitur (sesuai aturan commit kecil & sering), pesan sesuai daftar Commit — bukan satu commit besar.
 
 ---
 

@@ -66,6 +66,24 @@ export const setUserStatusSchema = z.object({
   action: z.enum(["ban", "unban"]),
 });
 
+// --- Pencapaian (ustadz grading) --------------------------------------------
+
+const nilaiPencapaianSchema = z.object({
+  halamanId: z.string().uuid("Halaman tidak valid."),
+  persentase: z.coerce
+    .number()
+    .int("Persentase harus bilangan bulat.")
+    .min(0, "Persentase minimal 0.")
+    .max(100, "Persentase maksimal 100."),
+});
+
+/** Batch upsert of per-page scores for one santri in one kitab. */
+export const pencapaianInputSchema = z.object({
+  santriId: z.string().uuid("Santri tidak valid."),
+  kitabId: z.string().uuid("Kitab tidak valid."),
+  nilai: z.array(nilaiPencapaianSchema).min(1, "Minimal satu halaman dinilai."),
+});
+
 // --- Wali <-> Santri relations ----------------------------------------------
 
 /** Replace the full set of santri linked to one wali. */

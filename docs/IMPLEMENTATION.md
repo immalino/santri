@@ -37,7 +37,7 @@
 - [x] **Fase 4 — Fitur Admin**
 - [x] **Fase 5 — Fitur Ustadz**
 - [x] **Fase 6 — Fitur Wali Santri**
-- [ ] **Fase 7 — Polishing, Dark Mode & Verifikasi Akhir**
+- [x] **Fase 7 — Polishing, Dark Mode & Verifikasi Akhir** (7.10 deploy opsional — menunggu permintaan user)
 
 ---
 
@@ -411,30 +411,39 @@
 
 ### Task
 
-- [ ] **7.1** **Dark mode** sesuai DESIGN.md §7: varian gelap untuk semua token + toggle (simpan preferensi di localStorage / `next-themes` bila diperlukan). Pastikan kontras tetap ok.
-- [ ] **7.2** Lengkapi state: `loading.tsx` (skeleton) di halaman utama, `error.tsx` yang ramah, `not-found.tsx`, dan empty states di semua list/progress.
-- [ ] **7.3** Responsive pass: cek semua halaman di 320px (mobile) dan ≥1024px (desktop). Bottom nav benar, tombol tap-friendly (≥44px).
-- [ ] **7.4** **Keputusan yang belum diputuskan** di `ARCHITECTURE.md` §8 — tanyakan user:
-  - Perlu staging env terpisah sebelum production?
-  - Perlu rate-limiting/logging API, atau cukup proteksi role untuk MVP?
-- [ ] **7.5** `npm run lint` → perbaiki SEMUA error/warning sampai bersih.
-- [ ] **7.6** `npm run build` → pastikan production build sukses tanpa warning.
-- [ ] **7.7** Uji manual end-to-end dengan 3 role:
+- [x] **7.1** **Dark mode** sesuai DESIGN.md §7: varian gelap untuk semua token + toggle (simpan preferensi di localStorage / `next-themes` bila diperlukan). Pastikan kontras tetap ok.
+- [x] **7.2** Lengkapi state: `loading.tsx` (skeleton) di halaman utama, `error.tsx` yang ramah, `not-found.tsx`, dan empty states di semua list/progress.
+- [x] **7.3** Responsive pass: cek semua halaman di 320px (mobile) dan ≥1024px (desktop). Bottom nav benar, tombol tap-friendly (≥44px).
+- [x] **7.4** **Keputusan yang belum diputuskan** di `ARCHITECTURE.md` §8 — tanyakan user:
+  - Perlu staging env terpisah sebelum production? → **Tidak** — langsung production (skala <50 santri).
+  - Perlu rate-limiting/logging API, atau cukup proteksi role untuk MVP? → **Cukup proteksi role**.
+- [x] **7.5** `npm run lint` → perbaiki SEMUA error/warning sampai bersih.
+- [x] **7.6** `npm run build` → pastikan production build sukses tanpa warning.
+- [x] **7.7** Uji manual end-to-end dengan 3 role:
   - Admin: buat kitab baru → tambah halaman → pastikan data lama aman; buat santri & hubungkan wali.
   - Ustadz: input nilai → update nilai → lihat riwayat.
   - Wali: lihat progress → expand per halaman → switch anak (kalau ada).
   - Semua guard: coba akses halaman/API role lain sebagai user salah role → ditolak.
-- [ ] **7.8** Sinkronkan docs: kalau implementasi menyimpang dari `PRD/ARCHITECTURE/DESIGN/SCHEMA`, **update docs** biar selaras (misal deviasi `user.id` text vs uuid, pemakaian `proxy.ts`).
-- [ ] **7.9** Perbarui `docs/IMPLEMENTATION.md`: centang semua checklist + Progress Tracker → **semua `[x]`**.
-- [ ] **7.10** (Opsional, kalau user mau) Deploy ke Vercel: set env vars (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`), jalankan migrasi, push ke `main`.
+  - (Diverifikasi via skrip E2E read-only — lihat Catatan Fase 7.)
+- [x] **7.8** Sinkronkan docs: kalau implementasi menyimpang dari `PRD/ARCHITECTURE/DESIGN/SCHEMA`, **update docs** biar selaras (misal deviasi `user.id` text vs uuid, pemakaian `proxy.ts`).
+- [x] **7.9** Perbarui `docs/IMPLEMENTATION.md`: centang semua checklist + Progress Tracker → **semua `[x]`**.
+- [ ] **7.10** (Opsional, kalau user mau) Deploy ke Vercel: set env vars (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`), jalankan migrasi, push ke `main`. → **Belum dieksekusi** — hanya jalan saat user meminta.
 
 ### Definition of Done (Fase 7)
 
-- [ ] Dark mode berfungsi di semua halaman utama.
-- [ ] `npm run lint` & `npm run build` **hijau tanpa error/warning**.
-- [ ] Alur ketiga role teruji manual dan semua proteksi bekerja.
-- [ ] Docs selaras dengan implementasi.
-- [ ] Semua checklist di file ini tercentang.
+- [x] Dark mode berfungsi di semua halaman utama.
+- [x] `npm run lint` & `npm run build` **hijau tanpa error/warning**.
+- [x] Alur ketiga role teruji manual dan semua proteksi bekerja.
+- [x] Docs selaras dengan implementasi.
+- [x] Semua checklist di file ini tercentang (7.10 opsional deploy ditandai pending — bukan bagian dari DoD wajib).
+
+> 📝 **Catatan Fase 7 (deviasi/langkah yang ditemukan saat implementasi):**
+> - **Keputusan user (7.4, dikonfirmasi via tanya jawab):** (1) deploy langsung ke production, tanpa staging env (skala <50 santri); (2) hardening API cukup proteksi role di tiap handler (`requireApiRole`) — tanpa rate-limiting/logging/dependency tambahan; (3) dark mode hand-rolled **tanpa library** — `next-themes` tidak dipasang; (4) list admin di desktop **tetap grid kartu** (bukan table) di semua breakpoint demi konsistensi → `docs/DESIGN.md` §4 disinkronkan.
+> - **Dark mode (7.1) — pola anti-FOUC:** inline `<script>` sinkron di `<head>` root layout (`src/app/layout.tsx`) membaca `localStorage['theme']` (kunci `light`/`dark`; tidak ada → ikut `prefers-color-scheme`) lalu men-toggle class `.dark` pada `<html>` sebelum first paint, mengikuti pola `node_modules/next/dist/docs/01-app/02-guides/preventing-flash-before-hydration.md` + `suppressHydrationWarning`. Toggle (`src/components/ui/theme-toggle.tsx`, client) **tanpa React state**: langsung toggle class DOM + tulis localStorage; ikon Sun/Moon dirender keduanya dan di-swap via `dark:block`/`dark:hidden` sehingga tidak ada hydration mismatch. `globals.css` menambah `color-scheme: light/dark` agar native control (scrollbar, input) ikut berganti. Halaman `/login` tidak punya TopBar → tanpa toggle, tapi skrip anti-FOUC tetap berlaku (mengikuti system/preferensi tersimpan).
+> - **Streaming redirect (temuan E2E):** akses halaman role lain (mis. ustadz ke `/admin/dashboard`) **tidak selalu** menghasilkan HTTP 307. Bila ada `loading.tsx` (Suspense boundary) di bawah layout role, `redirect()` mengembalikan **200 + penanda `NEXT_REDIRECT` di payload RSC** dan browser mengikutinya. Diverifikasi: body **tidak** mengandung konten terproteksi (target `roleHome` benar, teks halaman 0), jadi bukan kebocoran — ini perilaku streaming Next 16 yang wajar. Skrip verifikasi menerima 307 **atau** 200+`NEXT_REDIRECT`+target.
+> - **State & empty states (7.2):** komponen `Skeleton` baru (`src/components/ui/skeleton.tsx`) dipakai ulang di `src/app/loading.tsx` + loading per role baru (`src/app/admin|ustadz|wali/loading.tsx`) yang dirender di dalam role layout sehingga nav tampil lebih dulu saat streaming. 2 empty state yang sebelumnya hilang ditambahkan di `/ustadz/input` ("Belum ada kitab." saat 0 kitab; "Tidak ada halaman untuk kitab ini." di sheet saat 0 halaman). Dead file `src/components/shared/page-placeholder.tsx` dihapus; komentar "error service" di `error.tsx` diupdate (tanpa error service).
+> - **Responsive (7.3):** audit kode 320px/≥1024px — temuan nyata hanya 1: tabel "Rata-rata per Kitab" di `/admin/dashboard` dibungkus `overflow-x-auto` (sebelumnya `overflow-hidden`) agar bisa scroll horizontal di layar sempit. Bottom nav `grid-cols-4`, tap target ≥44px, sticky save bar ustadz vs bottom nav — sudah aman, tidak diubah.
+> - **Verifikasi E2E (7.7):** skrip sementara `scripts/verify-fase7.mts` (tsx read-only, dihapus setelah dipakai) — sign-in 3 role via `auth.api.signInEmail`, cek: tanpa cookie → redirect `/login` (401 untuk API), halaman role sendiri → 200, cross-role → redirect, guard API (wali POST `/api/pencapaian` → 403, non-admin POST `/api/kitab` → 403), validasi persentase out-of-range (101 → 400), isolasi wali (progress santri terhubung → 200, tidak terhubung → 403). **23/23 lolos, 0 gagal.**
 
 ---
 

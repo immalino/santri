@@ -32,15 +32,16 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
     /admin                -> prefix role (keputusan Fase 2, bukan route group)
       /dashboard          -> rekap semua santri
       /kitab              -> CRUD kitab (+ auto-generate halaman)
-      /santri             -> CRUD santri
+      /santri             -> CRUD santri (+ /[id] detail editable, /[id]/kitab/[kitabId] grid nilai)
       /kelas              -> CRUD kelas (link dari halaman santri)
       /ustadz             -> CRUD akun ustadz
       /wali               -> CRUD akun wali + hubungkan ke santri
     /ustadz
       /input              -> pilih santri -> pilih kitab -> input persentase
+      /santri             -> daftar santri (+ /[id] detail editable, /[id]/kitab/[kitabId] grid nilai)
       /riwayat            -> riwayat penilaian
     /wali
-      /progress           -> lihat progress anak, switch antar santri
+      /santri             -> daftar anak (+ /[id] detail read-only, expand per halaman)
     /api
       /auth/[...all]      -> better-auth handler
       /kitab              (+ /[id])
@@ -61,7 +62,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
     roles.ts               -> Role, roleHome, roleLabel (tanpa import server)
   /components
     /ui                   -> Button, Card, Input, Select, Badge, ProgressBar, Skeleton, ThemeToggle
-    /shared               -> TopBar, RoleNav, LogoutButton
+    /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink
     /admin, /wali
   proxy.ts                 -> Next 16 proxy (pengganti middleware.ts)
 ```
@@ -108,10 +109,9 @@ Ustadz (browser)
 **Wali lihat progress:**
 ```
 Wali (browser)
-  -> Next.js page /wali/progress
-  -> API route /api/santri/:id/progress (validasi wali terhubung ke santri ini, selain itu 403)
-  -> Drizzle query (JOIN pencapaian + halaman + kitab, agregasi rata-rata %)
-  -> render progress bar per kitab
+  -> Next.js page /wali/santri -> /wali/santri/:id (server-rendered; ownership dicek via getWaliSantris, santri tak terhubung -> 404)
+  -> helper getSantriProgressData (JOIN pencapaian + halaman + kitab, agregasi rata-rata %) — langsung ke DB, tanpa API
+  -> render card kitab read-only, expand breakdown per halaman
 ```
 
 ## 7. Deployment

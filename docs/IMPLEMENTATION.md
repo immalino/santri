@@ -38,6 +38,7 @@
 - [x] **Fase 5 — Fitur Ustadz**
 - [x] **Fase 6 — Fitur Wali Santri**
 - [x] **Fase 7 — Polishing, Dark Mode & Verifikasi Akhir** (7.10 deploy opsional — menunggu permintaan user)
+- [x] **Fase 8 — Daftar Santri & Detail Pencapaian (Semua Role)**
 
 ---
 
@@ -449,7 +450,41 @@
 
 ---
 
-## 10. Ringkasan Aturan & Referensi (Tidak Boleh Dilupakan)
+## 10. Fase 8 — Daftar Santri & Detail Pencapaian (Semua Role)
+
+**Tujuan:** Semua role bisa melihat **daftar santri** → **detail santri** (daftar kitab + persentase) → **detail kitab** (breakdown per halaman). Admin & ustadz bisa **edit** nilai dari detail; wali **read-only**.
+
+### Task
+
+- [x] **8.1** Extend `getSantriProgressData` (`src/lib/santri-progress.ts`): tambah `kelasNama`, `statusAktif`, `rataRataKeseluruhan` (mean 0-100 semua halaman semua kitab, halaman belum dinilai = 0 — semantik sama `admin-stats`). Tambah `getSantriProgressList({ santriIds? })` → `{ id, nama, kelasNama, statusAktif, progress }` (early-return `[]` untuk array kosong; filter `inArray` opsional; urut nama).
+- [x] **8.2** Komponen shared baru di `src/components/shared/`:
+  - `santri-progress-detail.tsx` (server): header (nama, kelas, badge status, ProgressBar rata-rata keseluruhan) + daftar kitab. `mode="edit"` → card kitab = link ke grid nilai; `mode="read"` → `<details>` expand per halaman (dipindah dari `/wali/progress`).
+  - `kitab-grade-sheet.tsx` (client): grid halaman + bulk set, diekstrak verbatim dari `/ustadz/input`. Props `{ santriId, santriNama, kitabId, kitabNama, initialPages? }`; tanpa `initialPages` → preload via `/api/pencapaian`.
+  - `back-link.tsx`: tombol "Kembali" (ghost + ChevronLeft).
+- [x] **8.3** Halaman ustadz + nav: `/ustadz/santri` (daftar), `/ustadz/santri/[id]` (detail edit), `/ustadz/santri/[id]/kitab/[kitabId]` (grid edit). Nav ustadz bertambah "Santri" (Input Nilai, **Santri**, Riwayat); fix bottom-nav 3 item (`grid-cols-3`).
+- [x] **8.4** Halaman admin + entry point: `/admin/santri/[id]`, `/admin/santri/[id]/kitab/[kitabId]`; tombol "Lihat Progress" di card santri; card "Progress per Santri" dashboard jadi link ke detail.
+- [x] **8.5** Migrasi wali: `/wali/progress` → `/wali/santri` (daftar anak terhubung) + `/wali/santri/[id]` (detail read-only, expand per halaman). Ownership check: id bukan anak wali → 404. Hapus `/wali/progress` & `santri-switch.tsx`. `roleHome.wali` → `/wali/santri`; nav wali → "Santri".
+- [x] **8.6** Refactor `/ustadz/input` pakai `KitabGradeSheet` (remount via `key`), hapus logika grading inline.
+- [x] **8.7** Sinkronkan docs: `DESIGN.md` §4 (nav), `ARCHITECTURE.md` §3 (route), `IMPLEMENTATION.md` (fase ini).
+
+### Definition of Done (Fase 8)
+
+- [x] Semua role melihat daftar santri & detail (kitab + %), admin/ustadz bisa edit dari detail.
+- [x] Wali read-only (tanpa affordance edit); API `/api/pencapaian` tetap tolak wali (403).
+- [x] Wali hanya bisa buka detail anak yang terhubung (santri lain → 404).
+- [x] `npm run lint` & `npm run build` hijau.
+
+> 📝 **Catatan Fase 8 (deviasi/langkah yang ditemukan saat implementasi):**
+> - **Halaman kitab over-fetch** `getSantriProgressData(id)` lalu `find` kitab yang dicari — sekali query ambil semua kitab + semua halaman. Data per-halaman sudah tersedia, jadi `KitabGradeSheet` dihambat dengan `initialPages` (tanpa fetch tambahan). Over-fetch diterima demi satu helper yang konsisten.
+> - **Grid-cols-3 (8.3):** bottom nav mobile menghitung kolom dari `items.length`; ustadz jadi 3 item → branch `grid-cols-3` ditambahkan (Tailwind butuh class literal).
+> - **State loading sheet (8.2):** `loadingSheet` diinisialisasi `!initialPages` agar tanpa data awal langsung tampil "Memuat nilai..." (tanpa flash "Tidak ada halaman") sebelum preload selesai.
+> - **Redirect wali otomatis (8.5):** `roleHome.wali` diubah → semua alur redirect (root, login, role-salah) ikut mengarah ke `/wali/santri` tanpa perubahan lain.
+> - **Read-mode & `kitabLinkPrefix`:** prop hanya dipakai di `mode="edit"`; halaman wali read-only meneruskan `""` (tidak dirender).
+> - **Guard role: setiap halaman server cek ulang `requireRole` (CLAUDE.md)** — proxy hanya optimasi. Write grading tetap dicek API `/api/pencapaian` (`requireApiRole(["ustadz","admin"])`).
+
+---
+
+## 11. Ringkasan Aturan & Referensi (Tidak Boleh Dilupakan)
 
 | Aturan | Sumber |
 |---|---|

@@ -49,12 +49,13 @@ Tidak ada sidebar kompleks seperti referensi — cukup 3-4 menu utama per role d
 - List Kitab/Santri/Ustadz/Wali: **grid kartu** (1 kolom di mobile → 2 kolom di desktop). Keputusan implementasi Fase 7: grid kartu dipertahankan di semua breakpoint demi konsistensi — tidak memakai table di desktop (deviasi dari draft awal §4 ini; disepakati saat QA Fase 7).
 
 ### Ustadz
-- Bottom nav: Input Nilai, Riwayat
+- Bottom nav: Input Nilai, Santri, Riwayat
 - Halaman Input: pilih santri (search/dropdown) → pilih kitab → **grid kotak halaman** — tiap kotak menampilkan nomor halaman, isi warna kotak (gradasi hijau→gold) setinggi persentase sehingga "penuh/tidaknya" kotak = progres halaman itu; bulk set: tap pilih satu, tekan lama & seret pilih banyak, lalu set semua halaman terpilih ke satu nilai (preset/input kustom); tombol Simpan sticky di bawah (mobile)
+- Halaman Santri (Fase 8): daftar santri (kartu + rata-rata keseluruhan) → **detail santri** (card kitab editable, link ke grid nilai) → **grid nilai per halaman** (pola sama dengan Input Nilai, nilai lama ter-preload)
 
 ### Wali Santri
-- Bottom nav: Progress, (switch anak via dropdown di top bar kalau >1 santri)
-- Halaman Progress: card per kitab dengan progress bar horizontal + persentase, tap untuk expand breakdown per halaman
+- Bottom nav: Santri
+- Halaman Santri (Fase 8): daftar anak yang terhubung (kartu + rata-rata keseluruhan) → **detail read-only**: card per kitab dengan progress bar horizontal + persentase, tap untuk expand breakdown per halaman — tanpa affordance edit (bukan switch, karena tiap anak punya URL detail sendiri)
 
 ## 5. Komponen UI (Tailwind, custom — tanpa library komponen)
 

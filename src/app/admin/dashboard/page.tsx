@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BookOpen, TrendingUp, UserRound } from "lucide-react";
 import { requireRole } from "@/lib/permissions";
 import { getAdminRecap } from "@/lib/admin-stats";
@@ -60,7 +61,11 @@ export default async function AdminDashboardPage() {
             </Card>
           ) : (
             recap.santriProgress.map((s) => (
-              <Card key={s.santriId} className="p-4">
+              <Link
+                key={s.santriId}
+                href={`/admin/santri/${s.santriId}`}
+                className="block rounded-2xl border border-border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-background"
+              >
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate font-medium text-ink">{s.nama}</p>
@@ -69,7 +74,7 @@ export default async function AdminDashboardPage() {
                   <Badge variant={progressVariant(s.progress)}>{s.progress}%</Badge>
                 </div>
                 <ProgressBar value={s.progress} showLabel={false} />
-              </Card>
+              </Link>
             ))
           )}
         </section>

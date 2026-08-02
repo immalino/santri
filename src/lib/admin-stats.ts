@@ -59,11 +59,12 @@ export async function getAdminRecap(): Promise<AdminRecap> {
     santriScore.set(p.santriId, (santriScore.get(p.santriId) ?? 0) + p.persentase);
   }
 
+  // persentase is on a 0-100 scale, so the mean is 0-100 directly (no *100).
   const santriProgress: SantriProgress[] = santris.map((s) => ({
     santriId: s.id,
     nama: s.nama,
     kelasNama: s.kelas?.namaKelas ?? null,
-    progress: totalHalaman > 0 ? Math.round(((santriScore.get(s.id) ?? 0) / totalHalaman) * 100) : 0,
+    progress: totalHalaman > 0 ? Math.round((santriScore.get(s.id) ?? 0) / totalHalaman) : 0,
   }));
 
   const totalSantriAktif = santris.length;
@@ -85,7 +86,8 @@ export async function getAdminRecap(): Promise<AdminRecap> {
       kitabId: k.id,
       namaKitab: k.namaKitab,
       jumlahHalaman: k.jumlahHalaman,
-      rataRata: denom > 0 ? Math.round((total / denom) * 100) : 0,
+      // Mean of 0-100 persentase over (pages × active santri) — no *100.
+      rataRata: denom > 0 ? Math.round(total / denom) : 0,
     };
   });
 

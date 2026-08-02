@@ -1,4 +1,5 @@
 import LogoutButton from "./logout-button";
+import ThemeToggle from "@/components/ui/theme-toggle";
 import { roleLabel, type Role } from "@/lib/roles";
 
 interface TopBarProps {
@@ -21,11 +22,12 @@ export default function TopBar({ userName, role }: TopBarProps) {
           </span>
           <span className="truncate text-sm font-semibold text-ink">Pencapaian Santri</span>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5">
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium text-ink">{userName}</p>
             <p className="text-xs text-ink-secondary">{roleLabel[role]}</p>
           </div>
+          <ThemeToggle />
           <LogoutButton />
         </div>
       </div>

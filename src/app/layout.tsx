@@ -19,7 +19,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className={`${plusJakartaSans.variable} h-full antialiased`}>
+    <html lang="id" className={`${plusJakartaSans.variable} h-full antialiased`} suppressHydrationWarning>
+      {/* Dark mode (DESIGN.md §7): inline script runs synchronously during
+          HTML parsing, before first paint — prevents a light/dark flash.
+          Toggles the `.dark` class on <html> (see globals.css), following the
+          stored preference or the OS `prefers-color-scheme` on first visit. */}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("theme");var dark=t==="dark"||(t!="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",dark);}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className="flex min-h-full flex-col bg-background text-ink">
         {children}
       </body>

@@ -7,6 +7,9 @@
 /* DESIGN.md §2 — palette (light). Runtime CSS variables so the values can be
    swapped under `.dark` (see @theme inline below). */
 :root {
+  /* color-scheme so native controls (scrollbar, form widgets) follow the
+     theme. Overridden under .dark below. */
+  color-scheme: light;
   --primary: #0e6b4f;
   --primary-dark: #0a4f3a;
   --accent: #c99a2e;
@@ -22,6 +25,7 @@
 
 /* DESIGN.md §7 — dark variant (contrast-adjusted green/gold, dark surfaces). */
 .dark {
+  color-scheme: dark;
   --primary: #16a37c;
   --primary-dark: #12805f;
   --accent: #d9a93f;

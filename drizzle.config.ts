@@ -9,6 +9,9 @@ export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dialect: "postgresql",
+  // This project only uses the `public` schema; scoping introspection here
+  // avoids pulling unrelated schemas (pg_catalog, Supabase internals).
+  schemaFilter: ["public"],
   dbCredentials: {
     url: process.env.DATABASE_URL!,
   },

@@ -1,12 +1,29 @@
-import PagePlaceholder from "@/components/shared/page-placeholder";
+import { db } from "@/db";
+import { requireRole } from "@/lib/permissions";
+import KitabManager, { type KitabItem } from "@/components/admin/kitab-manager";
 
-export default function AdminKitabPage() {
-  return (
-    <PagePlaceholder
-      title="Kelola Kitab"
-      description="Daftar kitab, jumlah halaman, dan status aktif/nonaktif."
-      note="CRUD kitab dengan auto-generate halaman akan dibangun di Fase 4."
-      homeHref="/admin/dashboard"
-    />
-  );
+export const metadata = {
+  title: "Kelola Kitab | Sistem Pendataan Pencapaian Santri",
+};
+
+/**
+ * Kitab admin page (tasks 4.5–4.6). Server component: guard role, query the
+ * DB directly, then hand the (JSON-serializable) list to the client manager.
+ */
+export default async function AdminKitabPage() {
+  await requireRole(["admin"]);
+
+  const rows = await db.query.kitab.findMany({
+    orderBy: (k, { desc }) => [desc(k.createdAt)],
+    columns: { id: true, namaKitab: true, jumlahHalaman: true, deskripsi: true, status: true },
+  });
+  const initialKitabs: KitabItem[] = rows.map((r) => ({
+    id: r.id,
+    namaKitab: r.namaKitab,
+    jumlahHalaman: r.jumlahHalaman,
+    deskripsi: r.deskripsi,
+    status: r.status,
+  }));
+
+  return <KitabManager initialKitabs={initialKitabs} />;
 }

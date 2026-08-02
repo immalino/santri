@@ -38,6 +38,10 @@ export const user = pgTable("user", {
   image: text("image"),
   // Custom field for RBAC (declared as `additionalFields` in better-auth).
   role: roleEnum("role").default("wali").notNull(),
+  // Admin plugin fields (ban/unban = active/inactive for ustadz & wali).
+  banned: boolean("banned").default(false).notNull(),
+  banReason: text("ban_reason"),
+  banExpires: timestamp("ban_expires_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -11,7 +11,7 @@ export default function ErrorPage({
   unstable_retry: () => void;
 }) {
   useEffect(() => {
-    // Log the error to the console; hook up an error service in Phase 7.
+    // Log the error to the console for debugging.
     console.error(error);
   }, [error]);
 

@@ -305,6 +305,9 @@ export default function UstadzInputPage() {
               </option>
             ))}
           </Select>
+          {kitabs.length === 0 && (
+            <p className="mt-2 text-sm text-ink-secondary">Belum ada kitab.</p>
+          )}
         </Field>
       </Card>
 
@@ -320,6 +323,8 @@ export default function UstadzInputPage() {
           <div className="mt-2 divide-y divide-border">
             {loadingSheet && pages.length === 0 ? (
               <p className="py-4 text-sm text-ink-secondary">Memuat nilai...</p>
+            ) : pages.length === 0 ? (
+              <p className="py-4 text-sm text-ink-secondary">Tidak ada halaman untuk kitab ini.</p>
             ) : (
               pages.map((p) => (
                 <GradeRow

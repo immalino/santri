@@ -32,7 +32,7 @@ export async function GET(request: Request) {
     .innerJoin(halaman, eq(pencapaian.halamanId, halaman.id))
     .innerJoin(kitab, eq(halaman.kitabId, kitab.id))
     .where(santriId ? eq(pencapaian.santriId, santriId) : undefined)
-    .groupBy(santri.id, kitab.id)
+    .groupBy(santri.id, kitab.id, pencapaian.santriId)
     .orderBy(sql`max(${pencapaian.tanggalDinilai}) desc`);
 
   return NextResponse.json(rows);

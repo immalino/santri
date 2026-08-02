@@ -35,7 +35,7 @@
 - [x] **Fase 2 — Autentikasi & Otorisasi (better-auth)**
 - [x] **Fase 3 — Design System & Layout Per Role**
 - [x] **Fase 4 — Fitur Admin**
-- [ ] **Fase 5 — Fitur Ustadz**
+- [x] **Fase 5 — Fitur Ustadz**
 - [ ] **Fase 6 — Fitur Wali Santri**
 - [ ] **Fase 7 — Polishing, Dark Mode & Verifikasi Akhir**
 
@@ -337,26 +337,36 @@
 
 ### Task
 
-- [ ] **5.1** API `src/app/api/pencapaian/route.ts`:
+- [x] **5.1** API `src/app/api/pencapaian/route.ts`:
   - `GET`: daftar nilai pencapaian santri untuk kitab tertentu (filter `santri_id` + `kitab_id` → JOIN halaman).
   - `POST`/`PUT`: upsert nilai per halaman — **satu baris per `(santri, halaman)`** (pakai `onConflictDoUpdate` pada unique `santri_id, halaman_id`). Set `dinilai_oleh` = id ustadz yang login, `tanggal_dinilai` = now.
   - Validasi: `requireApiRole(['ustadz', 'admin'])`, `persentase` integer 0-100 (zod). Sanitize input, jangan percaya client.
-- [ ] **5.2** Halaman `(ustadz)/input/page.tsx` (client component):
+- [x] **5.2** Halaman `(ustadz)/input/page.tsx` (client component):
   - Pilih santri (searchable dropdown) → pilih kitab → tampilkan list halaman.
   - Tiap baris halaman: stepper/slider persentase (0-100) + menampilkan nilai yang sudah ada.
   - Tombol **Simpan** sticky di bawah (mobile) — simpan semua nilai yang berubah sekaligus.
-- [ ] **5.3** Preload nilai existing saat santri+kitab dipilih (dari `GET` pencapaian) supaya ustadz tidak mengetik ulang.
-- [ ] **5.4** Feedback: loading state saat simpan, toast/pesan sukses & error Bahasa Indonesia.
-- [ ] **5.5** Halaman `(ustadz)/riwayat/page.tsx`: daftar penilaian yang pernah diinput (santri, kitab, tanggal, rata-rata) — bisa difilter per santri.
-- [ ] **5.6** Commit: `feat(ustadz): input and history of achievement scores`
+- [x] **5.3** Preload nilai existing saat santri+kitab dipilih (dari `GET` pencapaian) supaya ustadz tidak mengetik ulang.
+- [x] **5.4** Feedback: loading state saat simpan, toast/pesan sukses & error Bahasa Indonesia.
+- [x] **5.5** Halaman `(ustadz)/riwayat/page.tsx`: daftar penilaian yang pernah diinput (santri, kitab, tanggal, rata-rata) — bisa difilter per santri.
+- [x] **5.6** Commit: `feat(ustadz): input and history of achievement scores`
 
 ### Definition of Done (Fase 5)
 
-- [ ] Ustadz bisa mengisi nilai per halaman dan menyimpan; nilai yang sama di-update (bukan duplikat).
-- [ ] Nilai di luar 0-100 ditolak dengan pesan jelas.
-- [ ] Riwayat menampilkan data yang benar.
-- [ ] Wali/admin tidak bisa POST ke API ini (403).
-- [ ] `npm run lint` & `npm run build` hijau.
+- [x] Ustadz bisa mengisi nilai per halaman dan menyimpan; nilai yang sama di-update (bukan duplikat).
+- [x] Nilai di luar 0-100 ditolak dengan pesan jelas.
+- [x] Riwayat menampilkan data yang benar.
+- [x] Wali tidak bisa POST ke API ini (403) — admin boleh menilai (sesuai task 5.1).
+- [x] `npm run lint` & `npm run build` hijau.
+
+> 📝 **Catatan Fase 5 (deviasi/langkah yang ditemukan saat implementasi):**
+> - **Endpoint dropdown ustadz tambahan `GET /api/ustadz/data`** (list santri aktif + kitab) dibuat karena `/api/santri` itu admin-only; halaman input/riwayat ustadz butuh data master. Dua-duanya di-proteksi `requireApiRole(['ustadz', 'admin'])`.
+> - **Riwayat tidak menyimpan log histori** (sesuatu PRD #9 = nilai terakhir saja). Jadi halaman riwayat = snapshot per kombinasi (santri, kitab): rata-rata kitab + tanggal penilaian terakhir, hasil agregasi Drizzle (`groupBy` santri+kitab, `avg(persentase)`, `max(tanggal_dinilai)`). "Riwayat menginput" setidaknya menunjukkan apa yang sudah pernah dinilai & kapan.
+> - **`avg()` Postgres balikin string** (numeric) → di-client di-coerce dengan `Number(...)` sebelum dipakai `ProgressBar`.
+> - **Sticky save bottom hanya di mobile** (`sticky bottom-20 md:static`) supaya tidak menutupi bottom nav; di desktop tombol inline.
+> - **`react-hooks/set-state-in-effect` (lint baru Next 16/React 19)** melarang `setState` sinkron di body effect — `setLoadingSheet(true)` & branch clear awal memicu error. Solusi: preload dibungkus `setTimeout(..., 0)` + flag `cancelled`, clear pada unmount/rerun; saat seleksi dikosongkan sheet tidak dirender jadi state basi tak pernah tampil.
+> - **Pilih santri = searchable list** (kotak cari + daftar chip yang bisa diklik), bukan `<select>` native (option-nya tidak bisa difilter). Memenuhi task 5.2 "searchable dropdown".
+> - **Verifikasi DB cepat** via `tsx --env-file=.env.local scripts/verify-fase5.ts` (read-only): GET-merge (37 halaman, 15 dinilai) & agregasi riwayat (4 baris) berjalan benar. Skrip sementara dihapus setelah dipakai.
+> - **Deviasi DoD 5.4:** dokumen menulis "Wali/admin tidak bisa POST", tapi task 5.1 eksplisit `requireApiRole(['ustadz', 'admin'])`. Diikuti task: **admin boleh menilai** (memang dibutuhkan bila ingin mengoreksi), wali tetap 403.
 
 ---
 

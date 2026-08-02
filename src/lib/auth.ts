@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { admin } from "better-auth/plugins";
 import { nextCookies } from "better-auth/next-js";
 import { db, schema } from "@/db";
 
@@ -18,8 +19,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     // No public registration: /api/auth/sign-up returns 400.
-    // NOTE (Phase 4): admin-created accounts must use a privileged flow
-    // (e.g. the better-auth admin plugin), NOT the signUpEmail route.
+    // Accounts are created by admins (Phase 4) via the admin plugin
+    // (`auth.api.createUser`), never through the public sign-up route.
     disableSignUp: true,
   },
   user: {
@@ -33,7 +34,24 @@ export const auth = betterAuth({
       },
     },
   },
-  // nextCookies must stay the last plugin: it routes Set-Cookie through
-  // Next.js `cookies()` so Server Actions / route handlers persist sessions.
-  plugins: [nextCookies()],
+  plugins: [
+    // Admin-only management (create user, ban/unban, set role). `adminRoles`
+    // makes role="admin" the privileged role; `defaultRole` matches our own
+    // default. The ban column names are mapped to the snake_case schema.
+    admin({
+      adminRoles: ["admin"],
+      defaultRole: "wali",
+      schema: {
+        user: {
+          fields: {
+            banReason: "ban_reason",
+            banExpires: "ban_expires_at",
+          },
+        },
+      },
+    }),
+    // nextCookies must stay the last plugin: it routes Set-Cookie through
+    // Next.js `cookies()` so Server Actions / route handlers persist sessions.
+    nextCookies(),
+  ],
 });

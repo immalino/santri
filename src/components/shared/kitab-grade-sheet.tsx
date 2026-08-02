@@ -102,7 +102,9 @@ export function KitabGradeSheet({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkValue, setBulkValue] = useState("");
   const [saving, setSaving] = useState(false);
-  const [loadingSheet, setLoadingSheet] = useState(false);
+  // Without preloaded data the sheet always fetches, so start in the loading
+  // state instead of flashing "no pages" before the fetch kicks in.
+  const [loadingSheet, setLoadingSheet] = useState(!initialPages);
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(
     null,
   );

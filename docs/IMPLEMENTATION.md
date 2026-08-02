@@ -36,7 +36,7 @@
 - [x] **Fase 3 — Design System & Layout Per Role**
 - [x] **Fase 4 — Fitur Admin**
 - [x] **Fase 5 — Fitur Ustadz**
-- [ ] **Fase 6 — Fitur Wali Santri**
+- [x] **Fase 6 — Fitur Wali Santri**
 - [ ] **Fase 7 — Polishing, Dark Mode & Verifikasi Akhir**
 
 ---
@@ -376,23 +376,32 @@
 
 ### Task
 
-- [ ] **6.1** API `src/app/api/santri/[id]/progress/route.ts`:
+- [x] **6.1** API `src/app/api/santri/[id]/progress/route.ts`:
   - Return: data santri, list kitab (termasuk nonaktif) + rata-rata % per kitab + breakdown per halaman.
   - **VALIDASI PENTING (CLAUDE.md):** kalau role `wali` → hanya boleh akses bila `[id]` ada di `wali_santri` miliknya. `ustadz`/`admin` boleh akses sesuai peran.
-- [ ] **6.2** Halaman `(wali)/progress/page.tsx`:
+- [x] **6.2** Halaman `(wali)/progress/page.tsx`:
   - Card per kitab: nama kitab + ProgressBar (gradasi hijau→gold) + persentase rata-rata.
   - **Tap untuk expand** breakdown per halaman (nilai tiap halaman).
   - Kitab nonaktif tetap tampil (soft delete — keputusan PRD #9).
-- [ ] **6.3** Wali dengan >1 santri: dropdown switch anak di top bar; URL/state berubah, konten ikut berubah.
-- [ ] **6.4** Empty state: santri belum punya penilaian → pesan ramah ("Belum ada penilaian").
-- [ ] **6.5** Commit: `feat(wali): view children progress with per-kitab breakdown`
+- [x] **6.3** Wali dengan >1 santri: dropdown switch anak di top bar; URL/state berubah, konten ikut berubah.
+- [x] **6.4** Empty state: santri belum punya penilaian → pesan ramah ("Belum ada penilaian").
+- [x] **6.5** Commit: `feat(wali): view children progress with per-kitab breakdown`
 
 ### Definition of Done (Fase 6)
 
-- [ ] Wali hanya melihat santri yang terhubung ke akunnya (uji dengan 2 wali berbeda).
-- [ ] Progress bar & persentase benar (cocok dengan data seed).
-- [ ] Switch anak bekerja dengan benar.
-- [ ] `npm run lint` & `npm run build` hijau.
+- [x] Wali hanya melihat santri yang terhubung ke akunnya (uji dengan 2 wali berbeda).
+- [x] Progress bar & persentase benar (cocok dengan data seed).
+- [x] Switch anak bekerja dengan benar.
+- [x] `npm run lint` & `npm run build` hijau.
+
+> 📝 **Catatan Fase 6 (deviasi/langkah yang ditemukan saat implementasi):**
+> - **Halaman progress wali di-render penuh server-side**, tidak fetch di client: `page.tsx` server component membaca `searchParams.santriId` (Next 16: Promise), lalu query langsung via helper bersama. Ini meniru pola dashboard admin (`getAdminRecap()`) — angka antara API route & halaman selalu sinkron karena dipakai helper yang sama (`src/lib/santri-progress.ts`).
+> - **Switch santri (6.3) ditaruh di bagian atas halaman progress**, bukan di `TopBar` global yang dipakai semua role. Alasan: `TopBar` server-rendered & role-agnostic — menyuntikkan daftar santri wali ke dalamnya akan mengikat layout semua role. Switch (`src/components/wali/santri-switch.tsx`, client) navigasi `router.replace('/wali/progress?santriId=...')`, page server re-render konten. Hanya dirender bila wali punya >1 santri.
+> - **"Tap untuk expand" pakai `<details>/<summary>` native** — tanpa komponen client & tanpa JS. Chevron rotate via varian Tailwind `group-open`. Card expandable bukan `Card` component karena butuh elemen `<details>`.
+> - **⚠️ Bug ×100 di dashboard admin (Fase 4) ditemukan & diperbaiki saat verifikasi 6:** `getAdminRecap()` mengalikan rata-rata persentase dengan 100 padahal `persentase` sudah berskala 0-100 → dashboard menampilkan angka sampai ribuan (mis. Ahmad Fauzi = 406%). Perbaikan: hapus `* 100` di `progress` per santri & `rataRata` per kitab (`src/lib/admin-stats.ts`). Semantik sama dengan halaman wali (rata-rata 0-100, halaman belum dinilai dihitung 0). DoD Fase 4 memang menunda "validasi angka vs seed" ke QA Fase 7 — bug ketangkap lebih awal di verifikasi Fase 6.
+> - **Rata-rata per kitab** = `sum(persentase 0-100) / jumlah_halaman` (halaman belum dinilai = 0), dibulatkan. Konsisten dengan `admin-stats`.
+> - **Verifikasi via skrip tsx sementara** (`scripts/verify-fase6.ts`, read-only): linkage 2 wali benar (wali1 → 2 santri, wali2 → 1), rata-rata per kitab dibandingkan dengan agregasi SQL independen — cocok, breakdown per halaman pas dengan `jumlah_halaman`, semua kitab (termasuk nonaktif) tampil. Skrip dihapus setelah dipakai.
+> - **⚠️ Database live menyimpang dari `seed.ts` repo:** ada 2 kitab ekstra (Nikah 200 hlm, Sholat 100 hlm) & pencapaian tambahan (Juz 'Amma Ahmad Fauzi 37/37 dinilai). Bukan masalah untuk Fase 6 (helper self-validating terhadap DB live), tapi kalau mau seed lagi, `npm run db:seed` akan reset ke data repo. Tidak dilakukan karena butuh konfirmasi.
 
 ---
 

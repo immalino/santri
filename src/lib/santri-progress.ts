@@ -7,7 +7,7 @@
  * Every kitab is listed (including nonaktif, PRD #9); per-page breakdown shows
  * each page's value or null when not yet graded.
  */
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import {
   halaman as halamanTable,
@@ -37,6 +37,10 @@ export interface WaliKitabProgress {
 export interface SantriProgressData {
   santriId: string;
   nama: string;
+  kelasNama: string | null;
+  statusAktif: boolean;
+  /** 0-100 overall across ALL pages of ALL kitab (ungraded count as 0). */
+  rataRataKeseluruhan: number;
   kitab: WaliKitabProgress[];
   /** True when at least one page across any kitab has been graded. */
   hasPenilaian: boolean;
@@ -45,7 +49,8 @@ export interface SantriProgressData {
 export async function getSantriProgressData(santriId: string): Promise<SantriProgressData | null> {
   const [santriRow] = await db.query.santri.findMany({
     where: (s, { eq }) => eq(s.id, santriId),
-    columns: { id: true, nama: true },
+    columns: { id: true, nama: true, statusAktif: true },
+    with: { kelas: { columns: { namaKelas: true } } },
     limit: 1,
   });
   if (!santriRow) return null;
@@ -117,7 +122,75 @@ export async function getSantriProgressData(santriId: string): Promise<SantriPro
     };
   });
 
-  return { santriId, nama: santriRow.nama, kitab: kitabRows, hasPenilaian };
+  // Overall progress = mean of every page of every kitab (ungraded = 0),
+  // matching the admin-stats semantics. persentase is already 0-100.
+  const totalHalaman = kitabRows.reduce((sum, k) => sum + k.jumlahHalaman, 0);
+  const skorTotal = scores.reduce((sum, sc) => sum + sc.persentase, 0);
+  const rataRataKeseluruhan = totalHalaman > 0 ? Math.round(skorTotal / totalHalaman) : 0;
+
+  return {
+    santriId,
+    nama: santriRow.nama,
+    kelasNama: santriRow.kelas?.namaKelas ?? null,
+    statusAktif: santriRow.statusAktif,
+    rataRataKeseluruhan,
+    kitab: kitabRows,
+    hasPenilaian,
+  };
+}
+
+/**
+ * List of santri with their overall progress (0-100 across all kitab), used by
+ * the ustadz/wali daftar pages. Reuses the admin-stats aggregation semantics:
+ * ungraded pages count as 0, and every kitab counts (incl. nonaktif).
+ *
+ * When `santriIds` is provided (wali), only those santri are returned; an empty
+ * array short-circuits to [] because an empty `inArray` is invalid SQL.
+ */
+export interface SantriListProgress {
+  id: string;
+  nama: string;
+  kelasNama: string | null;
+  statusAktif: boolean;
+  progress: number;
+}
+
+export async function getSantriProgressList(opts?: {
+  santriIds?: string[];
+}): Promise<SantriListProgress[]> {
+  const santriIds = opts?.santriIds;
+  if (santriIds && santriIds.length === 0) return [];
+
+  const santris = await db.query.santri.findMany({
+    where: santriIds ? inArray(santri.id, santriIds) : undefined,
+    columns: { id: true, nama: true, statusAktif: true },
+    with: { kelas: { columns: { namaKelas: true } } },
+    orderBy: (s, { asc }) => [asc(s.nama)],
+  });
+  if (santris.length === 0) return [];
+
+  const kitabs = await db.query.kitab.findMany({
+    columns: { id: true, jumlahHalaman: true },
+  });
+  const totalHalaman = kitabs.reduce((sum, k) => sum + k.jumlahHalaman, 0);
+
+  const scores = await db
+    .select({ santriId: pencapaian.santriId, persentase: pencapaian.persentase })
+    .from(pencapaian)
+    .where(santriIds ? inArray(pencapaian.santriId, santriIds) : undefined);
+
+  const scoreBySantri = new Map<string, number>();
+  for (const s of scores) {
+    scoreBySantri.set(s.santriId, (scoreBySantri.get(s.santriId) ?? 0) + s.persentase);
+  }
+
+  return santris.map((s) => ({
+    id: s.id,
+    nama: s.nama,
+    kelasNama: s.kelas?.namaKelas ?? null,
+    statusAktif: s.statusAktif,
+    progress: totalHalaman > 0 ? Math.round((scoreBySantri.get(s.id) ?? 0) / totalHalaman) : 0,
+  }));
 }
 
 /**

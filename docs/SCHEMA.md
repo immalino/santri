@@ -3,7 +3,7 @@
 Skema PostgreSQL (via Drizzle ORM), mengacu pada `PRD.md` dan `ARCHITECTURE.md`.
 
 ## Konvensi
-- Primary key: **UUID** (`gen_random_uuid()`) di semua tabel
+- Primary key: **UUID** (`gen_random_uuid()`) di semua tabel **kecuali tabel auth better-auth** yang memakai `text` sebagai `id` (default better-auth — deviasi dari draft awal §1). Semua FK yang mereferensikan `user.id` ikut bertipe `text`.
 - Penamaan tabel & kolom: **snake_case**
 - Semua tabel punya `created_at` & `updated_at`
 - Role user (`admin` / `ustadz` / `wali`) disimpan langsung sebagai field di tabel `user` milik better-auth
@@ -19,20 +19,23 @@ better-auth otomatis membuat & mengelola tabel berikut. Kita tambahkan kolom `ro
 ### `user`
 | Kolom | Tipe | Keterangan |
 |---|---|---|
-| id | uuid, PK | |
+| id | **text**, PK | default better-auth (bukan uuid) |
 | name | text | |
 | email | text, unique | |
 | email_verified | boolean | |
 | image | text, nullable | |
-| **role** | enum(`admin`, `ustadz`, `wali`) | **field custom** ditambahkan untuk RBAC |
+| **role** | enum(`admin`, `ustadz`, `wali`), default `wali` | **field custom** ditambahkan untuk RBAC |
+| banned | boolean, default false | plugin admin — dipakai untuk nonaktifkan akun ustadz/wali |
+| ban_reason | text, nullable | |
+| ban_expires_at | timestamp, nullable | |
 | created_at | timestamp | |
 | updated_at | timestamp | |
 
 ### `session`
 | Kolom | Tipe |
 |---|---|
-| id | uuid, PK |
-| user_id | uuid, FK → user.id |
+| id | text, PK |
+| user_id | text, FK → user.id |
 | token | text |
 | expires_at | timestamp |
 | ip_address | text, nullable |
@@ -43,8 +46,8 @@ better-auth otomatis membuat & mengelola tabel berikut. Kita tambahkan kolom `ro
 ### `account`
 | Kolom | Tipe |
 |---|---|
-| id | uuid, PK |
-| user_id | uuid, FK → user.id |
+| id | text, PK |
+| user_id | text, FK → user.id |
 | account_id | text |
 | provider_id | text |
 | password | text, nullable |
@@ -54,7 +57,7 @@ better-auth otomatis membuat & mengelola tabel berikut. Kita tambahkan kolom `ro
 ### `verification`
 | Kolom | Tipe |
 |---|---|
-| id | uuid, PK |
+| id | text, PK |
 | identifier | text |
 | value | text |
 | expires_at | timestamp |
@@ -92,7 +95,7 @@ Tabel junction many-to-many antara wali (user dengan role `wali`) dan santri.
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | id | uuid, PK | |
-| wali_id | uuid, FK → user.id | |
+| wali_id | **text**, FK → user.id | (mengikuti `user.id` bertipe text) |
 | santri_id | uuid, FK → santri.id | |
 | created_at | timestamp | |
 | updated_at | timestamp | |
@@ -132,7 +135,7 @@ Jantung sistem — nilai persentase per santri per halaman, **nilai terakhir saj
 | santri_id | uuid, FK → santri.id | |
 | halaman_id | uuid, FK → halaman.id | |
 | persentase | integer (0-100) | |
-| dinilai_oleh | uuid, FK → user.id | user dengan role `ustadz` |
+| dinilai_oleh | **text**, FK → user.id | user dengan role `ustadz`/`admin` (mengikuti `user.id` bertipe text) |
 | tanggal_dinilai | timestamp | |
 | created_at | timestamp | |
 | updated_at | timestamp | update setiap kali dinilai ulang |
@@ -206,7 +209,7 @@ export const pencapaian = pgTable("pencapaian", {
   santriId: uuid("santri_id").references(() => santri.id).notNull(),
   halamanId: uuid("halaman_id").references(() => halaman.id).notNull(),
   persentase: integer("persentase").notNull(),
-  dinilaiOleh: uuid("dinilai_oleh").notNull(), // FK -> user.id (better-auth)
+  dinilaiOleh: text("dinilai_oleh").notNull(), // FK -> user.id (better-auth, text)
   tanggalDinilai: timestamp("tanggal_dinilai").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -218,7 +221,7 @@ export const pencapaian = pgTable("pencapaian", {
 
 export const waliSantri = pgTable("wali_santri", {
   id: uuid("id").defaultRandom().primaryKey(),
-  waliId: uuid("wali_id").notNull(), // FK -> user.id (better-auth)
+  waliId: text("wali_id").notNull(), // FK -> user.id (better-auth, text)
   santriId: uuid("santri_id").references(() => santri.id).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

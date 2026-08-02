@@ -46,7 +46,7 @@ Tidak ada sidebar kompleks seperti referensi — cukup 3-4 menu utama per role d
 ### Admin
 - Bottom nav: Dashboard, Kitab, Santri, Lainnya (Ustadz/Wali)
 - Dashboard: ringkasan card sederhana (Total Santri, Total Kitab, Rata-rata Progress) — versi ringan dari card statistik di referensi, tanpa chart donut kompleks
-- List Kitab/Santri/Ustadz/Wali: table di desktop, card list di mobile
+- List Kitab/Santri/Ustadz/Wali: **grid kartu** (1 kolom di mobile → 2 kolom di desktop). Keputusan implementasi Fase 7: grid kartu dipertahankan di semua breakpoint demi konsistensi — tidak memakai table di desktop (deviasi dari draft awal §4 ini; disepakati saat QA Fase 7).
 
 ### Ustadz
 - Bottom nav: Input Nilai, Riwayat
@@ -72,5 +72,22 @@ Tidak ada sidebar kompleks seperti referensi — cukup 3-4 menu utama per role d
 - Hindari ikon dekoratif berat (kaligrafi, ornamen islami detail) — cukup 1-2 aksen halus (misal ikon buku/kitab bergaya sederhana) untuk identitas tanpa mengganggu kesan clean.
 
 ## 7. Keputusan
-- **Dark mode**: diperlukan — sediakan varian gelap dari palet warna di atas (background gelap, surface sedikit lebih terang, primary/accent tetap hijau-gold tapi disesuaikan kontrasnya)
+- **Dark mode** (implementasi Fase 7): varian gelap dari palet §2 — background gelap, surface sedikit lebih terang, primary/accent tetap hijau-gold tapi disesuaikan kontrasnya. Palet gelap konkret yang dipakai (di `src/app/globals.css`):
+
+  | Token | Hex (gelap) |
+  |---|---|
+  | `primary` | `#16A37C` |
+  | `primary-dark` | `#12805F` |
+  | `accent` | `#D9A93F` |
+  | `background` | `#0F1A15` |
+  | `surface` | `#17241E` |
+  | `border` | `#26352D` |
+  | `ink` / `text-primary` | `#E8EFEA` |
+  | `ink-secondary` / `text-secondary` | `#9AA8A0` |
+  | `success` | `#3DBB74` |
+  | `warning` | `#E2A44A` |
+  | `danger` | `#D96059` |
+
+  **Toggle**: ikon Sun/Moon di top bar (komponen `ThemeToggle`). Preferensi disimpan di `localStorage` (kunci `theme` = `light`/`dark`); kunjungan pertama mengikuti `prefers-color-scheme` sistem. Skrip inline anti-flash di root layout menerapkan class `.dark` pada `<html>` sebelum first paint. Mode class-based (Tailwind `@custom-variant dark`), jadi semua komponen yang memakai token semantik otomatis ikut berganti.
+
 - **Logo/identitas visual**: yayasan belum punya — gunakan placeholder logo sementara

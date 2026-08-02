@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Pencil, Plus, Power, School, Settings2, UserRound } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,11 +43,11 @@ export default function SantriManager({
   initialSantris: SantriItem[];
   initialKelas: KelasOption[];
 }) {
+  const toast = useToast();
   const [santris, setSantris] = useState<SantriItem[]>(initialSantris);
   const [form, setForm] = useState<SantriForm>({ nama: "", kelasId: "", statusAktif: true });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function refresh() {
@@ -57,41 +58,42 @@ export default function SantriManager({
     setEditingId(null);
     setForm({ nama: "", kelasId: "", statusAktif: true });
     setShowForm(true);
-    setError(null);
   }
 
   function openEdit(item: SantriItem) {
     setEditingId(item.id);
     setForm({ nama: item.nama, kelasId: item.kelasId ?? "", statusAktif: item.statusAktif });
     setShowForm(true);
-    setError(null);
   }
 
   function cancelForm() {
     setShowForm(false);
     setEditingId(null);
-    setError(null);
   }
 
   async function handleSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     const payload = {
       nama: form.nama.trim(),
       kelasId: form.kelasId ? form.kelasId : null,
       ...(editingId ? { statusAktif: form.statusAktif } : {}),
     };
     try {
-      if (editingId) {
-        await api(`/api/santri/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) });
-      } else {
-        await api("/api/santri", { method: "POST", body: JSON.stringify(payload) });
-      }
+      await toast.promise(
+        editingId
+          ? api(`/api/santri/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) })
+          : api("/api/santri", { method: "POST", body: JSON.stringify(payload) }),
+        {
+          loading: "Menyimpan santri...",
+          success: editingId ? "Santri berhasil diperbarui." : "Santri berhasil ditambahkan.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal menyimpan santri."),
+        },
+      );
       await refresh();
       cancelForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.");
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     } finally {
       setLoading(false);
     }
@@ -99,19 +101,26 @@ export default function SantriManager({
 
   /** Nonaktifkan via DELETE (soft deactivate), Aktifkan via PATCH statusAktif. */
   async function toggleStatus(item: SantriItem) {
-    setError(null);
     try {
-      if (item.statusAktif) {
-        await api(`/api/santri/${item.id}`, { method: "DELETE" });
-      } else {
-        await api(`/api/santri/${item.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ statusAktif: true }),
-        });
-      }
+      await toast.promise(
+        item.statusAktif
+          ? api(`/api/santri/${item.id}`, { method: "DELETE" })
+          : api(`/api/santri/${item.id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ statusAktif: true }),
+            }),
+        {
+          loading: item.statusAktif ? "Menonaktifkan santri..." : "Mengaktifkan santri...",
+          success:
+            item.statusAktif
+              ? "Santri berhasil dinonaktifkan."
+              : "Santri berhasil diaktifkan.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal mengubah status santri."),
+        },
+      );
       await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.");
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     }
   }
 
@@ -135,10 +144,6 @@ export default function SantriManager({
           </Button>
         </div>
       </div>
-
-      {error && (
-        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
-      )}
 
       {showForm && (
         <Card className="p-5">

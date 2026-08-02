@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Link2, Save } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -32,6 +33,7 @@ interface Relation {
  * always reflects freshly-created wali / santri.
  */
 export default function WaliSantriManager() {
+  const toast = useToast();
   const [walis, setWalis] = useState<WaliOption[]>([]);
   const [santris, setSantris] = useState<SantriOption[]>([]);
   const [relations, setRelations] = useState<Relation[]>([]);
@@ -91,20 +93,22 @@ export default function WaliSantriManager() {
   async function handleSave() {
     if (!waliId) return;
     setLoading(true);
-    setMessage(null);
     try {
-      await api("/api/wali-santri", {
-        method: "POST",
-        body: JSON.stringify({ waliId, santriIds: selected }),
-      });
+      await toast.promise(
+        api("/api/wali-santri", {
+          method: "POST",
+          body: JSON.stringify({ waliId, santriIds: selected }),
+        }),
+        {
+          loading: "Menyimpan relasi...",
+          success: "Relasi wali ↔ santri berhasil disimpan.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal menyimpan relasi."),
+        },
+      );
       const fresh = await api<{ waliId: string; santriId: string }[]>("/api/wali-santri");
       setRelations(fresh.map((rel) => ({ waliId: rel.waliId, santriId: rel.santriId })));
-      setMessage({ kind: "success", text: "Relasi wali ↔ santri berhasil disimpan." });
-    } catch (err) {
-      setMessage({
-        kind: "error",
-        text: err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.",
-      });
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     } finally {
       setLoading(false);
     }

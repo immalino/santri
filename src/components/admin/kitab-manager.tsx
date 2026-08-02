@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { BookOpen, Pencil, Plus, Power } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -39,11 +40,11 @@ const emptyForm: KitabForm = {
  * the database (including auto-generated halaman counts).
  */
 export default function KitabManager({ initialKitabs }: { initialKitabs: KitabItem[] }) {
+  const toast = useToast();
   const [kitabs, setKitabs] = useState<KitabItem[]>(initialKitabs);
   const [form, setForm] = useState<KitabForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function refresh() {
@@ -54,7 +55,6 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
     setEditingId(null);
     setForm(emptyForm);
     setShowForm(true);
-    setError(null);
   }
 
   function openEdit(item: KitabItem) {
@@ -66,19 +66,16 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
       status: item.status,
     });
     setShowForm(true);
-    setError(null);
   }
 
   function cancelForm() {
     setShowForm(false);
     setEditingId(null);
-    setError(null);
   }
 
   async function handleSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     const payload = {
       namaKitab: form.namaKitab.trim(),
       jumlahHalaman: Number(form.jumlahHalaman),
@@ -86,15 +83,20 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
       status: form.status,
     };
     try {
-      if (editingId) {
-        await api(`/api/kitab/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) });
-      } else {
-        await api("/api/kitab", { method: "POST", body: JSON.stringify(payload) });
-      }
+      await toast.promise(
+        editingId
+          ? api(`/api/kitab/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) })
+          : api("/api/kitab", { method: "POST", body: JSON.stringify(payload) }),
+        {
+          loading: "Menyimpan kitab...",
+          success: editingId ? "Kitab berhasil diperbarui." : "Kitab berhasil ditambahkan.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal menyimpan kitab."),
+        },
+      );
       await refresh();
       cancelForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.");
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     } finally {
       setLoading(false);
     }
@@ -102,19 +104,26 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
 
   /** Nonaktifkan via DELETE (soft), Aktifkan via PATCH status. */
   async function toggleStatus(item: KitabItem) {
-    setError(null);
     try {
-      if (item.status === "aktif") {
-        await api(`/api/kitab/${item.id}`, { method: "DELETE" });
-      } else {
-        await api(`/api/kitab/${item.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ status: "aktif" }),
-        });
-      }
+      await toast.promise(
+        item.status === "aktif"
+          ? api(`/api/kitab/${item.id}`, { method: "DELETE" })
+          : api(`/api/kitab/${item.id}`, {
+              method: "PATCH",
+              body: JSON.stringify({ status: "aktif" }),
+            }),
+        {
+          loading: item.status === "aktif" ? "Menonaktifkan kitab..." : "Mengaktifkan kitab...",
+          success:
+            item.status === "aktif"
+              ? "Kitab berhasil dinonaktifkan."
+              : "Kitab berhasil diaktifkan.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal mengubah status kitab."),
+        },
+      );
       await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.");
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     }
   }
 
@@ -132,10 +141,6 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
           {showForm ? "Batal" : "Tambah Kitab"}
         </Button>
       </div>
-
-      {error && (
-        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
-      )}
 
       {showForm && (
         <Card className="p-5">

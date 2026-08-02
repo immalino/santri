@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { Toaster } from "@/components/ui/toast";
 import "./globals.css";
 
 // DESIGN.md §3 — Plus Jakarta Sans, self-hosted via next/font.
@@ -32,7 +33,7 @@ export default function RootLayout({
         />
       </head>
       <body className="flex min-h-full flex-col bg-background text-ink">
-        {children}
+        <Toaster>{children}</Toaster>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BookOpenText, Check, Save, UsersRound } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
@@ -92,6 +93,7 @@ function BulkBar({
  * Existing values are preloaded so a re-grade starts from the last values.
  */
 export default function UstadzInputPage() {
+  const toast = useToast();
   const [santris, setSantris] = useState<SantriOption[]>([]);
   const [kitabs, setKitabs] = useState<KitabOption[]>([]);
   const [santriId, setSantriId] = useState("");
@@ -225,30 +227,33 @@ export default function UstadzInputPage() {
   async function handleSave() {
     if (!santriId || !kitabId || pages.length === 0 || changedPages.length === 0) return;
     setSaving(true);
-    setMessage(null);
     try {
-      await api("/api/pencapaian", {
-        method: "POST",
-        body: JSON.stringify({
-          santriId,
-          kitabId,
-          nilai: changedPages.map((p) => ({
-            halamanId: p.halamanId,
-            persentase: values[p.halamanId] ?? 0,
-          })),
+      await toast.promise(
+        api("/api/pencapaian", {
+          method: "POST",
+          body: JSON.stringify({
+            santriId,
+            kitabId,
+            nilai: changedPages.map((p) => ({
+              halamanId: p.halamanId,
+              persentase: values[p.halamanId] ?? 0,
+            })),
+          }),
         }),
-      });
-      setMessage({ kind: "success", text: "Nilai berhasil disimpan." });
+        {
+          loading: "Menyimpan nilai...",
+          success: "Nilai berhasil disimpan.",
+          error: (err) =>
+            err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.",
+        },
+      );
       // Treat the just-saved values as the new baseline so the sheet stops
       // showing "unsaved changes" and the save button disables.
       setPages((prev) =>
         prev.map((p) => ({ ...p, persentase: values[p.halamanId] ?? 0 })),
       );
-    } catch (err) {
-      setMessage({
-        kind: "error",
-        text: err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.",
-      });
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     } finally {
       setSaving(false);
     }

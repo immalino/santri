@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Pencil, Plus, School, Trash2 } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,11 +26,11 @@ const emptyForm: KelasForm = { namaKelas: "", deskripsi: "" };
 
 /** Kelas management (task 4.7). Create/edit via the admin API, delete allowed only when empty. */
 export default function KelasManager({ initialKelas }: { initialKelas: KelasItem[] }) {
+  const toast = useToast();
   const [kelas, setKelas] = useState<KelasItem[]>(initialKelas);
   const [form, setForm] = useState<KelasForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function refresh() {
@@ -40,40 +41,41 @@ export default function KelasManager({ initialKelas }: { initialKelas: KelasItem
     setEditingId(null);
     setForm(emptyForm);
     setShowForm(true);
-    setError(null);
   }
 
   function openEdit(item: KelasItem) {
     setEditingId(item.id);
     setForm({ namaKelas: item.namaKelas, deskripsi: item.deskripsi ?? "" });
     setShowForm(true);
-    setError(null);
   }
 
   function cancelForm() {
     setShowForm(false);
     setEditingId(null);
-    setError(null);
   }
 
   async function handleSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     const payload = {
       namaKelas: form.namaKelas.trim(),
       deskripsi: form.deskripsi.trim() || undefined,
     };
     try {
-      if (editingId) {
-        await api(`/api/kelas/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) });
-      } else {
-        await api("/api/kelas", { method: "POST", body: JSON.stringify(payload) });
-      }
+      await toast.promise(
+        editingId
+          ? api(`/api/kelas/${editingId}`, { method: "PATCH", body: JSON.stringify(payload) })
+          : api("/api/kelas", { method: "POST", body: JSON.stringify(payload) }),
+        {
+          loading: "Menyimpan kelas...",
+          success: editingId ? "Kelas berhasil diperbarui." : "Kelas berhasil ditambahkan.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal menyimpan kelas."),
+        },
+      );
       await refresh();
       cancelForm();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.");
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     } finally {
       setLoading(false);
     }
@@ -81,12 +83,18 @@ export default function KelasManager({ initialKelas }: { initialKelas: KelasItem
 
   async function handleDelete(item: KelasItem) {
     if (!confirm(`Hapus kelas "${item.namaKelas}"?`)) return;
-    setError(null);
     try {
-      await api(`/api/kelas/${item.id}`, { method: "DELETE" });
+      await toast.promise(
+        api(`/api/kelas/${item.id}`, { method: "DELETE" }),
+        {
+          loading: "Menghapus kelas...",
+          success: "Kelas berhasil dihapus.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal menghapus kelas."),
+        },
+      );
       await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.");
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     }
   }
 
@@ -104,10 +112,6 @@ export default function KelasManager({ initialKelas }: { initialKelas: KelasItem
           {showForm ? "Batal" : "Tambah Kelas"}
         </Button>
       </div>
-
-      {error && (
-        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
-      )}
 
       {showForm && (
         <Card className="p-5">

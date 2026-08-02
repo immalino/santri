@@ -4,35 +4,46 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { roleHome, type Role } from "@/lib/roles";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function LoginForm() {
   const router = useRouter();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
     setLoading(true);
-
-    const { data, error: signInError } = await authClient.signIn.email({
-      email,
-      password,
-    });
-
-    if (signInError || !data?.user) {
-      setError("Email atau password salah. Silakan coba lagi.");
+    try {
+      await toast.promise(
+        async () => {
+          const { data, error: signInError } = await authClient.signIn.email({
+            email,
+            password,
+          });
+          if (signInError || !data?.user) {
+            throw new Error("Email atau password salah. Silakan coba lagi.");
+          }
+          const role = (data.user.role ?? "wali") as Role;
+          router.push(roleHome[role]);
+          router.refresh();
+        },
+        {
+          loading: "Memproses masuk...",
+          success: "Berhasil masuk.",
+          error: (err) =>
+            err instanceof Error ? err.message : "Gagal masuk. Silakan coba lagi.",
+        },
+      );
+    } catch {
+      // Error sudah ditampilkan lewat toast.
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const role = (data.user.role ?? "wali") as Role;
-    router.push(roleHome[role]);
-    router.refresh();
   }
 
   return (
@@ -78,10 +89,6 @@ export default function LoginForm() {
               placeholder="••••••••"
             />
           </div>
-
-          {error && (
-            <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
-          )}
 
           <Button type="submit" disabled={loading} className="w-full">
             {loading ? "Memproses..." : "Masuk"}

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Mail, Plus, Power, UserRound } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -43,10 +44,10 @@ export default function UserManager({
   title: string;
   description: string;
 }) {
+  const toast = useToast();
   const [users, setUsers] = useState<UserAccount[]>(initialUsers);
   const [form, setForm] = useState<AccountForm>(emptyForm);
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function refresh() {
@@ -56,23 +57,28 @@ export default function UserManager({
   function toggleForm() {
     setShowForm((v) => !v);
     setForm(emptyForm);
-    setError(null);
   }
 
   async function handleCreate(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     try {
-      await api("/api/users", {
-        method: "POST",
-        body: JSON.stringify({ ...form, role }),
-      });
+      await toast.promise(
+        api("/api/users", {
+          method: "POST",
+          body: JSON.stringify({ ...form, role }),
+        }),
+        {
+          loading: "Membuat akun...",
+          success: "Akun berhasil dibuat.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal membuat akun."),
+        },
+      );
       setForm(emptyForm);
       setShowForm(false);
       await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.");
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     } finally {
       setLoading(false);
     }
@@ -80,15 +86,21 @@ export default function UserManager({
 
   /** Ban / unban an account (soft deactivate). */
   async function toggleBan(user: UserAccount) {
-    setError(null);
     try {
-      await api(`/api/users/${user.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ action: user.banned ? "unban" : "ban" }),
-      });
+      await toast.promise(
+        api(`/api/users/${user.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ action: user.banned ? "unban" : "ban" }),
+        }),
+        {
+          loading: user.banned ? "Mengaktifkan akun..." : "Menonaktifkan akun...",
+          success: user.banned ? "Akun berhasil diaktifkan." : "Akun berhasil dinonaktifkan.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal mengubah status akun."),
+        },
+      );
       await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.");
+    } catch {
+      // Error sudah ditampilkan lewat toast.
     }
   }
 
@@ -104,10 +116,6 @@ export default function UserManager({
           {showForm ? "Batal" : "Tambah Akun"}
         </Button>
       </div>
-
-      {error && (
-        <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">{error}</p>
-      )}
 
       {showForm && (
         <Card className="p-5">

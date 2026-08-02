@@ -79,7 +79,7 @@ export default async function AdminDashboardPage() {
           {recap.perKitab.length === 0 ? (
             <Card className="p-6 text-center text-sm text-ink-secondary">Belum ada kitab.</Card>
           ) : (
-            <Card className="overflow-hidden">
+            <Card className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-border bg-background text-xs uppercase tracking-wide text-ink-secondary">

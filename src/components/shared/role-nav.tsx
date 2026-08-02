@@ -43,6 +43,7 @@ const navByRole: Record<Role, { items: NavItem[]; more?: NavItem[] }> = {
   ustadz: {
     items: [
       { href: "/ustadz/input", label: "Input Nilai", icon: ClipboardList },
+      { href: "/ustadz/santri", label: "Santri", icon: Users },
       { href: "/ustadz/riwayat", label: "Riwayat", icon: Clock },
     ],
   },
@@ -101,7 +102,13 @@ function MobileNav({
   const [open, setOpen] = useState(false);
   const moreActive = more?.some((m) => isActivePath(pathname, m.href)) ?? false;
   // Tailwind needs literal class names — the values below are static.
-  const cols = more ? "grid-cols-4" : items.length === 2 ? "grid-cols-2" : "grid-cols-1";
+  const cols = more
+    ? "grid-cols-4"
+    : items.length === 3
+      ? "grid-cols-3"
+      : items.length === 2
+        ? "grid-cols-2"
+        : "grid-cols-1";
 
   return (
     <nav

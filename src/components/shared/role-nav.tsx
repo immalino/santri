@@ -11,7 +11,6 @@ import {
   UserRound,
   ClipboardList,
   Clock,
-  TrendingUp,
   Ellipsis,
   type LucideIcon,
 } from "lucide-react";
@@ -48,7 +47,7 @@ const navByRole: Record<Role, { items: NavItem[]; more?: NavItem[] }> = {
     ],
   },
   wali: {
-    items: [{ href: "/wali/progress", label: "Progress", icon: TrendingUp }],
+    items: [{ href: "/wali/santri", label: "Santri", icon: Users }],
   },
 };
 

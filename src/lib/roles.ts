@@ -12,7 +12,7 @@ export type Role = "admin" | "ustadz" | "wali";
 export const roleHome: Record<Role, string> = {
   admin: "/admin/dashboard",
   ustadz: "/ustadz/input",
-  wali: "/wali/progress",
+  wali: "/wali/santri",
 };
 
 /** Human-readable label per role (UI text is Bahasa Indonesia). */

@@ -32,7 +32,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="flex min-h-full flex-col bg-background text-ink">
+      <body
+        className="flex min-h-full flex-col bg-background text-ink"
+        suppressHydrationWarning
+      >
         <Toaster>{children}</Toaster>
       </body>
     </html>

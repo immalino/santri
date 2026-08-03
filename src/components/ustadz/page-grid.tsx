@@ -18,6 +18,8 @@ interface PageGridProps {
   /** Long-press start / paint drag entering a box → select it. */
   onPaintSelect: (halamanId: string) => void;
   onPaintEnd?: () => void;
+  /** halamanId to temporarily highlight (jump-to-page target). */
+  highlightId?: string | null;
 }
 
 const LONG_PRESS_MS = 350;
@@ -47,6 +49,7 @@ export function PageGrid({
   onToggle,
   onPaintSelect,
   onPaintEnd,
+  highlightId,
 }: PageGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   const timer = useRef<number | null>(null);
@@ -155,11 +158,16 @@ export function PageGrid({
           <button
             key={p.halamanId}
             type="button"
+            id={`page-${p.halamanId}`}
             data-halaman-id={p.halamanId}
             aria-pressed={isSelected}
             aria-label={`Halaman ${p.nomorHalaman}, ${pct}%`}
             className={`relative aspect-square select-none overflow-hidden rounded-lg border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
               isSelected ? "border-primary ring-2 ring-primary" : "border-border"
+            } ${
+              p.halamanId === highlightId
+                ? "ring-2 ring-accent"
+                : ""
             } ${pct > 0 ? "text-ink" : "text-ink-secondary"}`}
           >
             {pct > 0 && (

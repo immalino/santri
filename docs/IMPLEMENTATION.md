@@ -2,7 +2,7 @@
 
 **Project:** Sistem Pendataan Pencapaian Santri
 **Status:** 🔄 Dalam Pengerjaan (update checklist di bawah setiap selesai mengerjakan)
-**Terakhir di-update:** 2026-08-02
+**Terakhir di-update:** 2026-08-03
 
 > Plan ini ditulis seperti arahan **senior developer → junior developer**. Idenya: kamu (junior, manusia atau AI) mengerjakan step-by-step sesuai urutan, centang checklist ketika selesai, dan jangan lompat ke fase berikutnya sebelum fase sebelumnya **Definition of Done**-nya terpenuhi.
 
@@ -480,6 +480,7 @@
 > - **State loading sheet (8.2):** `loadingSheet` diinisialisasi `!initialPages` agar tanpa data awal langsung tampil "Memuat nilai..." (tanpa flash "Tidak ada halaman") sebelum preload selesai.
 > - **Redirect wali otomatis (8.5):** `roleHome.wali` diubah → semua alur redirect (root, login, role-salah) ikut mengarah ke `/wali/santri` tanpa perubahan lain.
 > - **Read-mode & `kitabLinkPrefix`:** prop hanya dipakai di `mode="edit"`; halaman wali read-only meneruskan `""` (tidak dirender).
+> - **Bulk-set dalam modal + lompat halaman (8.2):** untuk kitab berhalaman banyak (mis. 1000), bar "N halaman dipilih / Bersihkan / preset / 0-100 / Terapkan" dipindah ke **modal** (`Dialog`, komponen baru `src/components/ui/dialog.tsx`) dan dibuka lewat tombol sticky yang selalu terlihat (`bottom-36` mobile / inline desktop) — tidak perlu scroll ke bawah grid untuk set nilai. Grid halaman tetap inline. Ditambah bar **"Lompat ke halaman"** (sticky `top-14`) + sorot singkat halaman tujuan (`highlightId` di `PageGrid`). Modal menutup otomatis setelah Terapkan/Bersihkan.
 > - **Guard role: setiap halaman server cek ulang `requireRole` (CLAUDE.md)** — proxy hanya optimasi. Write grading tetap dicek API `/api/pencapaian` (`requireApiRole(["ustadz","admin"])`).
 
 ---

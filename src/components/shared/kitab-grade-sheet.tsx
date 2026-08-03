@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { BookOpenText, Check, Save } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BookOpenText, Check, Save, SlidersHorizontal } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog } from "@/components/ui/dialog";
 import { PageGrid } from "@/components/ustadz/page-grid";
 
 interface PageScore {
@@ -16,7 +17,7 @@ interface PageScore {
 
 const PRESETS = [0, 25, 50, 75, 100];
 
-/** Sticky bulk-set bar shown while pages are selected (task 5.2 redesign). */
+/** Bulk-set controls ("N halaman dipilih / Bersihkan / preset / 0-100 / Terapkan"). */
 function BulkBar({
   count,
   value,
@@ -79,6 +80,12 @@ function BulkBar({
  *
  * The parent remounts this component per selection via `key`, so all state is
  * scoped to one santri+kitab pair.
+ *
+ * Layout (deviasi keputusan desain — bulk-set dalam modal): the page grid stays
+ * inline (task 5.2) with an added jump-to-page aid for kitab with many pages.
+ * The bulk-set bar lives in a modal opened by a sticky, always-reachable
+ * button, so a 1000-page kitab no longer requires scrolling to the bottom of
+ * the grid to set a value.
  */
 export function KitabGradeSheet({
   santriId,
@@ -107,6 +114,18 @@ export function KitabGradeSheet({
   const [loadingSheet, setLoadingSheet] = useState(!initialPages);
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(
     null,
+  );
+  const [open, setOpen] = useState(false);
+  const [jumpValue, setJumpValue] = useState("");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+  const jumpTimer = useRef<number | null>(null);
+
+  // Clear any pending jump-highlight timer on unmount.
+  useEffect(
+    () => () => {
+      if (jumpTimer.current) window.clearTimeout(jumpTimer.current);
+    },
+    [],
   );
 
   // Preload the sheet from the API when no initial data was passed (task 5.3
@@ -190,6 +209,25 @@ export function KitabGradeSheet({
     });
   }
 
+  /** Jump the page grid to a page number and briefly highlight it. */
+  function handleJump(e: React.FormEvent) {
+    e.preventDefault();
+    if (pages.length === 0) return;
+    const n = Number(jumpValue);
+    if (!Number.isInteger(n) || n <= 0) return;
+    const page = pages.find((p) => p.nomorHalaman === n);
+    if (!page) {
+      setMessage({ kind: "error", text: `Halaman ${n} tidak ada di kitab ini.` });
+      return;
+    }
+    document
+      .getElementById(`page-${page.halamanId}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlightId(page.halamanId);
+    if (jumpTimer.current) window.clearTimeout(jumpTimer.current);
+    jumpTimer.current = window.setTimeout(() => setHighlightId(null), 2500);
+  }
+
   async function handleSave() {
     if (!santriId || !kitabId || pages.length === 0 || changedPages.length === 0) return;
     setSaving(true);
@@ -238,6 +276,32 @@ export function KitabGradeSheet({
           {message.text}
         </p>
       )}
+
+      {/* Jump-to-page: quick navigation for kitab with many pages. Sticks just
+          below the top bar so it stays reachable while scrolling the grid.
+          Offset top-[72px] clears the sticky top bar (44px content + py-3) + border. */}
+      <form
+        onSubmit={handleJump}
+        className="sticky top-[72px] z-10 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 shadow-sm"
+      >
+        <label htmlFor="lompat-halaman" className="text-sm font-medium text-ink">
+          Lompat ke halaman
+        </label>
+        <input
+          id="lompat-halaman"
+          type="number"
+          min={1}
+          max={pages.length}
+          value={jumpValue}
+          onChange={(e) => setJumpValue(e.target.value)}
+          placeholder={`1-${pages.length}`}
+          aria-label="Nomor halaman tujuan"
+          className="w-28 rounded-xl border border-border bg-background px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-secondary/70 focus:border-primary focus:ring-2 focus:ring-primary/20"
+        />
+        <Button type="submit" size="sm">
+          Lompat
+        </Button>
+      </form>
 
       <Card className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -289,28 +353,31 @@ export function KitabGradeSheet({
               onToggle={togglePage}
               onPaintSelect={paintSelect}
               onPaintEnd={() => {}}
+              highlightId={highlightId}
             />
           )}
         </div>
-
-        {selected.size > 0 && (
-          <div className="mt-3">
-            <BulkBar
-              count={selected.size}
-              value={bulkValue}
-              onValueChange={setBulkValue}
-              onApply={applyBulkValue}
-              onClear={() => setSelected(new Set())}
-            />
-          </div>
-        )}
-
-        {changedPages.length === 0 && pages.length > 0 && (
-          <p className="mt-2 text-xs text-ink-secondary">
-            Belum ada perubahan untuk disimpan.
-          </p>
-        )}
       </Card>
+
+      {/* Always-reachable entry to the bulk-set modal (sticky above the mobile
+          bottom nav + save bar; inline on desktop). */}
+      {selected.size > 0 && (
+        <div className="sticky bottom-36 z-10 md:static">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setOpen(true)}
+            className="w-full"
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden />
+            Set Nilai untuk {selected.size} halaman
+          </Button>
+        </div>
+      )}
+
+      {changedPages.length === 0 && pages.length > 0 && (
+        <p className="text-xs text-ink-secondary">Belum ada perubahan untuk disimpan.</p>
+      )}
 
       {/* Save bar — sticky bottom on mobile, inline on desktop. */}
       <div className="sticky bottom-20 md:static">
@@ -336,6 +403,24 @@ export function KitabGradeSheet({
           </Button>
         </div>
       </div>
+
+      {/* Bulk-set modal — the "N halaman dipilih / Bersihkan / preset / 0-100 /
+          Terapkan" UI, opened from the always-visible button above. */}
+      <Dialog open={open} onClose={() => setOpen(false)} title="Atur Nilai Halaman">
+        <BulkBar
+          count={selected.size}
+          value={bulkValue}
+          onValueChange={setBulkValue}
+          onApply={(v) => {
+            applyBulkValue(v);
+            setOpen(false);
+          }}
+          onClear={() => {
+            setSelected(new Set());
+            setOpen(false);
+          }}
+        />
+      </Dialog>
     </div>
   );
 }

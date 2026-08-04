@@ -7,6 +7,7 @@ import { roleHome, type Role } from "@/lib/roles";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -79,9 +80,8 @@ export default function LoginForm() {
             <label htmlFor="password" className="mb-1 block text-sm font-medium text-ink">
               Password
             </label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               required
               autoComplete="current-password"
               value={password}

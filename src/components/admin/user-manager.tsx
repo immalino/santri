@@ -7,6 +7,7 @@ import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Field } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
@@ -165,9 +166,8 @@ export default function UserManager({
             htmlFor="user-password"
             hint="Password minimal 8 karakter."
           >
-            <Input
+            <PasswordInput
               id="user-password"
-              type="password"
               required
               minLength={8}
               autoComplete="new-password"

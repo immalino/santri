@@ -1,5 +1,6 @@
 import Image from "next/image";
-import LogoutButton from "./logout-button";
+import Link from "next/link";
+import { Settings } from "lucide-react";
 import ThemeToggle from "@/components/ui/theme-toggle";
 import { roleLabel, type Role } from "@/lib/roles";
 import logo from "@/app/logo.png";
@@ -11,8 +12,8 @@ interface TopBarProps {
 
 /**
  * Shared top bar for role pages (DESIGN.md §4): app logo + name on the left,
- * user info + logout on the right. Navigation is rendered separately by
- * <RoleNav />.
+ * theme toggle + settings link on the right. Navigation is rendered separately
+ * by <RoleNav />; logout lives on the /pengaturan page.
  */
 export default function TopBar({ userName, role }: TopBarProps) {
   return (
@@ -35,7 +36,14 @@ export default function TopBar({ userName, role }: TopBarProps) {
             <p className="text-xs text-ink-secondary">{roleLabel[role]}</p>
           </div>
           <ThemeToggle />
-          <LogoutButton />
+          <Link
+            href={`/${role}/pengaturan`}
+            aria-label="Pengaturan akun"
+            title="Pengaturan akun"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-ink-secondary transition-colors hover:bg-background hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            <Settings className="h-5 w-5" aria-hidden />
+          </Link>
         </div>
       </div>
     </header>

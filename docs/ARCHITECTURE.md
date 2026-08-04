@@ -36,12 +36,15 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
       /kelas              -> CRUD kelas (link dari halaman santri)
       /ustadz             -> CRUD akun ustadz
       /wali               -> CRUD akun wali + hubungkan ke santri
+      /pengaturan         -> ganti password sendiri
     /ustadz
       /input              -> pilih santri -> pilih kitab -> input persentase
       /santri             -> daftar santri (+ /[id] detail editable, /[id]/kitab/[kitabId] grid nilai)
       /riwayat            -> riwayat penilaian
+      /pengaturan         -> ganti password sendiri
     /wali
       /santri             -> daftar anak (+ /[id] detail read-only, expand per halaman)
+      /pengaturan         -> ganti password sendiri
     /api
       /auth/[...all]      -> better-auth handler
       /kitab              (+ /[id])
@@ -61,8 +64,8 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
     permissions.ts         -> requireRole / requireApiRole
     roles.ts               -> Role, roleHome, roleLabel (tanpa import server)
   /components
-    /ui                   -> Button, Card, Input, Select, Badge, ProgressBar, Skeleton, ThemeToggle
-    /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink
+    /ui                   -> Button, Card, Input, PasswordInput, Select, Badge, ProgressBar, Skeleton, ThemeToggle
+    /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink, ChangePasswordForm
     /admin, /wali
   proxy.ts                 -> Next 16 proxy (pengganti middleware.ts)
 ```

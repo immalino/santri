@@ -91,3 +91,17 @@ export const waliSantriReplaceSchema = z.object({
   waliId: z.string().min(1, "Wali wajib dipilih."),
   santriIds: z.array(z.string().uuid("Santri tidak valid.")).default([]),
 });
+
+// --- Self-service password change -------------------------------------------
+
+/** Self password change: verify current password + matching confirmation. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Password saat ini wajib diisi."),
+    newPassword: z.string().min(8, "Password baru minimal 8 karakter."),
+    confirmPassword: z.string().min(1, "Konfirmasi password wajib diisi."),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Konfirmasi password tidak cocok.",
+    path: ["confirmPassword"],
+  });

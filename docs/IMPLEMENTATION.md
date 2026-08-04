@@ -2,7 +2,7 @@
 
 **Project:** Sistem Pendataan Pencapaian Santri
 **Status:** 🔄 Dalam Pengerjaan (update checklist di bawah setiap selesai mengerjakan)
-**Terakhir di-update:** 2026-08-03
+**Terakhir di-update:** 2026-08-04
 
 > Plan ini ditulis seperti arahan **senior developer → junior developer**. Idenya: kamu (junior, manusia atau AI) mengerjakan step-by-step sesuai urutan, centang checklist ketika selesai, dan jangan lompat ke fase berikutnya sebelum fase sebelumnya **Definition of Done**-nya terpenuhi.
 
@@ -39,6 +39,7 @@
 - [x] **Fase 6 — Fitur Wali Santri**
 - [x] **Fase 7 — Polishing, Dark Mode & Verifikasi Akhir** (7.10 deploy opsional — menunggu permintaan user)
 - [x] **Fase 8 — Daftar Santri & Detail Pencapaian (Semua Role)**
+- [x] **Fase 9 — Pengaturan Akun (Ganti Password Sendiri)**
 
 ---
 
@@ -483,6 +484,36 @@
 > - **Read-mode & `kitabLinkPrefix`:** prop hanya dipakai di `mode="edit"`; halaman wali read-only meneruskan `""` (tidak dirender).
 > - **Bulk-set dalam modal + lompat halaman (8.2):** untuk kitab berhalaman banyak (mis. 1000), bar "N halaman dipilih / Bersihkan / preset / 0-100 / Terapkan" dipindah ke **modal** (`Dialog`, komponen baru `src/components/ui/dialog.tsx`) dan dibuka lewat tombol sticky yang selalu terlihat (`bottom-36` mobile / inline desktop) — tidak perlu scroll ke bawah grid untuk set nilai. Grid halaman tetap inline. Ditambah bar **"Lompat ke halaman"** (sticky `top-14`) + sorot singkat halaman tujuan (`highlightId` di `PageGrid`). Modal menutup otomatis setelah Terapkan/Bersihkan.
 > - **Guard role: setiap halaman server cek ulang `requireRole` (CLAUDE.md)** — proxy hanya optimasi. Write grading tetap dicek API `/api/pencapaian` (`requireApiRole(["ustadz","admin"])`).
+
+---
+
+## 10b. Fase 9 — Pengaturan Akun (Ganti Password Sendiri)
+
+**Tujuan:** Semua role (admin/ustadz/wali) bisa mengganti password akun sendiri. Sebelumnya akun dibuat admin dengan password awal dan user tidak punya cara mengubahnya.
+
+### Task
+
+- [x] **9.1** Verifikasi API better-auth `POST /change-password` (bawaan, sudah ter-mount via `/api/auth/[...all]`). Client method: `authClient.changePassword({ currentPassword, newPassword, revokeOtherSessions })`. Error codes yang dipetakan ke Bahasa Indonesia: `INVALID_PASSWORD`, `PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `CREDENTIAL_ACCOUNT_NOT_FOUND`.
+- [x] **9.2** Skema validasi aplikasi `changePasswordSchema` di `src/lib/validations.ts` (zod): `currentPassword` wajib, `newPassword` min 8 karakter, `confirmPassword` harus cocok.
+- [x] **9.3** Komponen shared `src/components/shared/change-password-form.tsx` (client): 3 field (Password saat ini / Password baru / Konfirmasi password baru), submit → `authClient.changePassword` dengan `revokeOtherSessions: true` (sesi di perangkat lain dicabut, perangkat ini tetap login), feedback via `useToast` (loading → sukses/error), form di-reset setelah sukses.
+- [x] **9.4** Halaman per role `src/app/{admin,ustadz,wali}/pengaturan/page.tsx` (server component, `requireRole([...])`, render `ChangePasswordForm`).
+- [x] **9.5** Entry point: ikon gear **Pengaturan** di `src/components/shared/top-bar.tsx` (di samping `ThemeToggle`), link ke `/{role}/pengaturan`.
+- [x] **9.6** Sinkronkan docs: `ARCHITECTURE.md` §3 (route `/pengaturan` per role + `ChangePasswordForm` di komponen shared), `IMPLEMENTATION.md` (fase ini). Commit: `feat(auth): self-service change password per role`.
+
+### Definition of Done (Fase 9)
+
+- [x] User ketiga role bisa membuka `/pengaturan` dan mengganti password sendiri.
+- [x] Password saat ini salah → toast error jelas; password baru < 8 karakter / konfirmasi tidak cocok → ditolak dengan pesan Bahasa Indonesia.
+- [x] Sesi di perangkat lain dicabut setelah ganti password (perangkat saat ini tetap login).
+- [x] `npm run lint` & `npm run build` hijau.
+
+> 📝 **Catatan Fase 9 (deviasi/langkah yang ditemukan saat implementasi):**
+> - **Tidak ada API route baru** — better-auth sudah menyediakan endpoint `/change-password` (dibalas `PASSWORD_TOO_SHORT`/`PASSWORD_TOO_LONG` sesuai batas default 8–128 karakter dari config `password`). Klien cukup `authClient.changePassword`.
+> - **Mapping error code:** objek error client better-auth punya field `code`; dipetakan lewat `PASSWORD_ERROR_MESSAGES` agar pesan UI konsisten Bahasa Indonesia, fallback ke `error.message`.
+> - **URL `/pengaturan` konsisten per role** (prefix role, sama seperti Fase 2): `/admin/pengaturan`, `/ustadz/pengaturan`, `/wali/pengaturan`. TopBar menghitung link dari prop `role`.
+> - **Tambahan pasca-Fase 9 (permintaan user):** komponen UI `PasswordInput` (`src/components/ui/password-input.tsx`) — input password dengan toggle mata (show/hide, `Eye`/`EyeOff`). Dipakai di semua input password: halaman login (`login-form`), form ganti password (`change-password-form`), dan form create akun admin (`user-manager`). Style mengikuti `ThemeToggle` (ikon 11x11, rounded-xl).
+> - **Tombol Pengaturan di TopBar (pasca-Fase 9, permintaan user):** dicoba beberapa gaya — awalnya `ButtonLink variant="ghost"` (ikon saja) terlihat samar/kecil, lalu `variant="secondary"` (border) dianggap kurang enak dilihat; **final: `<Link>` polos dengan class identik `ThemeToggle`** (`h-11 w-11`, `rounded-xl`, `text-ink-secondary`, `hover:bg-background`, ikon `h-5 w-5`) — tanpa border, selaras dengan ikon dark mode.
+> - **Logout dipindah ke halaman `/pengaturan` (pasca-Fase 9, permintaan user):** `LogoutButton` tidak lagi dirender di `TopBar` (hanya tersisa ikon settings); setiap halaman `/pengaturan` (admin/ustadz/wali) kini menampilkan kartu "Keluar dari Akun" dengan `LogoutButton`. 
 
 ---
 

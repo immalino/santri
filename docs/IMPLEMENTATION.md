@@ -329,6 +329,7 @@
 > - **`wali-santri-manager` dipaksa self-contained** (fetch di `useEffect`) karena wali/santri yang baru dibuat harus langsung tampil tanpa reload.
 > - **Hapus & jangan commit folder route group mati `(admin)/(ustadz)/(wali)`** yang tersisa dari Fase 0 (`.gitkeep`) + skrip debug `scripts/dbg-constraints.mjs` + `scripts/apply-ban-columns.ts`.
 > - **4.16 diimplementasikan sebagai beberapa commit kecil** per sub-fitur (sesuai aturan commit kecil & sering), pesan sesuai daftar Commit — bukan satu commit besar.
+> - **Form create/edit admin dipindah ke modal (deviasi UI pasca-Fase 8, permintaan user).** Sebelumnya form tambah/edit muncul sebagai Card inline di atas daftar — kalau daftar santri/kelas/kitab/akun panjang, mengedit baris bawah butuh scroll balik ke atas. Semua form di `santri-manager`, `kelas-manager`, `kitab-manager`, dan `user-manager` (create akun) sekarang dibuka lewat `Dialog` (`src/components/ui/dialog.tsx`); tombol header "Tambah X" selalu membuka modal (tidak lagi toggle ke "Batal"). Tombol Simpan ada di `footer` modal (selalu terlihat) dan submit form di body lewat atribut HTML `form="form-<nama>"`. Edit/delete toggle (aktif/nonaktif) tetap di kartu list.
 
 ---
 

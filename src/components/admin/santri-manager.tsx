@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Field } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 
 /** Santri row shared by the server page and this manager. */
 export interface SantriItem {
@@ -138,70 +139,72 @@ export default function SantriManager({
             <Settings2 className="h-4 w-4" aria-hidden />
             Kelola Kelas
           </ButtonLink>
-          <Button type="button" onClick={showForm ? cancelForm : openCreate}>
+          <Button type="button" onClick={openCreate}>
             <Plus className="h-4 w-4" aria-hidden />
-            {showForm ? "Batal" : "Tambah Santri"}
+            Tambah Santri
           </Button>
         </div>
       </div>
 
-      {showForm && (
-        <Card className="p-5">
-          <h2 className="mb-4 text-lg font-semibold text-ink">
-            {editingId ? "Edit Santri" : "Tambah Santri"}
-          </h2>
-          <form onSubmit={handleSave} className="space-y-4">
-            <Field label="Nama Santri" htmlFor="nama-santri">
-              <Input
-                id="nama-santri"
-                required
-                value={form.nama}
-                onChange={(e) => setForm((f) => ({ ...f, nama: e.target.value }))}
-                placeholder="Nama lengkap santri"
-              />
-            </Field>
+      {/* Create/edit form lives in a modal (DESIGN.md §5) so it stays reachable
+          without scrolling back to the top of a long santri list. */}
+      <Dialog
+        open={showForm}
+        onClose={cancelForm}
+        title={editingId ? "Edit Santri" : "Tambah Santri"}
+        footer={
+          <div className="flex gap-3">
+            <Button type="submit" form="form-santri" disabled={loading} className="flex-1">
+              {loading ? "Menyimpan..." : "Simpan"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={cancelForm}>
+              Batal
+            </Button>
+          </div>
+        }
+      >
+        <form id="form-santri" onSubmit={handleSave} className="space-y-4">
+          <Field label="Nama Santri" htmlFor="nama-santri">
+            <Input
+              id="nama-santri"
+              required
+              value={form.nama}
+              onChange={(e) => setForm((f) => ({ ...f, nama: e.target.value }))}
+              placeholder="Nama lengkap santri"
+            />
+          </Field>
 
-            <Field label="Kelas" htmlFor="kelas-santri">
+          <Field label="Kelas" htmlFor="kelas-santri">
+            <Select
+              id="kelas-santri"
+              value={form.kelasId}
+              onChange={(e) => setForm((f) => ({ ...f, kelasId: e.target.value }))}
+            >
+              <option value="">Tanpa kelas</option>
+              {initialKelas.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.namaKelas}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          {editingId && (
+            <Field label="Status" htmlFor="status-santri">
               <Select
-                id="kelas-santri"
-                value={form.kelasId}
-                onChange={(e) => setForm((f) => ({ ...f, kelasId: e.target.value }))}
+                id="status-santri"
+                value={form.statusAktif ? "aktif" : "nonaktif"}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, statusAktif: e.target.value === "aktif" }))
+                }
               >
-                <option value="">Tanpa kelas</option>
-                {initialKelas.map((k) => (
-                  <option key={k.id} value={k.id}>
-                    {k.namaKelas}
-                  </option>
-                ))}
+                <option value="aktif">Aktif</option>
+                <option value="nonaktif">Nonaktif</option>
               </Select>
             </Field>
-
-            {editingId && (
-              <Field label="Status" htmlFor="status-santri">
-                <Select
-                  id="status-santri"
-                  value={form.statusAktif ? "aktif" : "nonaktif"}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, statusAktif: e.target.value === "aktif" }))
-                  }
-                >
-                  <option value="aktif">Aktif</option>
-                  <option value="nonaktif">Nonaktif</option>
-                </Select>
-              </Field>
-            )}
-
-            <div className="flex gap-3">
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? "Menyimpan..." : "Simpan"}
-              </Button>
-              <Button type="button" variant="secondary" onClick={cancelForm}>
-                Batal
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+          )}
+        </form>
+      </Dialog>
 
       {santris.length === 0 ? (
         <Card className="p-6 text-center text-sm text-ink-secondary">

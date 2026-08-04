@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 
 /** Account row shared by the server pages and this manager. */
 export interface UserAccount {
@@ -54,9 +55,13 @@ export default function UserManager({
     setUsers(await api<UserAccount[]>(`/api/users?role=${role}`));
   }
 
-  function toggleForm() {
-    setShowForm((v) => !v);
+  function openCreate() {
     setForm(emptyForm);
+    setShowForm(true);
+  }
+
+  function cancelForm() {
+    setShowForm(false);
   }
 
   async function handleCreate(e: FormEvent<HTMLFormElement>) {
@@ -74,8 +79,7 @@ export default function UserManager({
           error: (err) => (err instanceof Error ? err.message : "Gagal membuat akun."),
         },
       );
-      setForm(emptyForm);
-      setShowForm(false);
+      cancelForm();
       await refresh();
     } catch {
       // Error sudah ditampilkan lewat toast.
@@ -111,65 +115,69 @@ export default function UserManager({
           <h1 className="text-2xl font-semibold text-ink">{title}</h1>
           <p className="mt-1 text-sm text-ink-secondary">{description}</p>
         </div>
-        <Button type="button" onClick={toggleForm}>
+        <Button type="button" onClick={openCreate}>
           <Plus className="h-4 w-4" aria-hidden />
-          {showForm ? "Batal" : "Tambah Akun"}
+          Tambah Akun
         </Button>
       </div>
 
-      {showForm && (
-        <Card className="p-5">
-          <h2 className="mb-4 text-lg font-semibold text-ink">Buat Akun {title.replace("Kelola ", "")}</h2>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <Field label="Nama" htmlFor="user-name">
-              <Input
-                id="user-name"
-                required
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Nama lengkap"
-              />
-            </Field>
+      {/* Create form lives in a modal so it stays reachable without scrolling
+          back to the top of a long akun list. */}
+      <Dialog
+        open={showForm}
+        onClose={cancelForm}
+        title={`Buat Akun ${title.replace("Kelola ", "")}`}
+        footer={
+          <div className="flex gap-3">
+            <Button type="submit" form="form-akun" disabled={loading} className="flex-1">
+              {loading ? "Membuat..." : "Buat Akun"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={cancelForm}>
+              Batal
+            </Button>
+          </div>
+        }
+      >
+        <form id="form-akun" onSubmit={handleCreate} className="space-y-4">
+          <Field label="Nama" htmlFor="user-name">
+            <Input
+              id="user-name"
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="Nama lengkap"
+            />
+          </Field>
 
-            <Field label="Email" htmlFor="user-email">
-              <Input
-                id="user-email"
-                type="email"
-                required
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                placeholder="nama@email.com"
-              />
-            </Field>
+          <Field label="Email" htmlFor="user-email">
+            <Input
+              id="user-email"
+              type="email"
+              required
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              placeholder="nama@email.com"
+            />
+          </Field>
 
-            <Field
-              label="Password"
-              htmlFor="user-password"
-              hint="Password minimal 8 karakter."
-            >
-              <Input
-                id="user-password"
-                type="password"
-                required
-                minLength={8}
-                autoComplete="new-password"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                placeholder="••••••••"
-              />
-            </Field>
-
-            <div className="flex gap-3">
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? "Membuat..." : "Buat Akun"}
-              </Button>
-              <Button type="button" variant="secondary" onClick={toggleForm}>
-                Batal
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+          <Field
+            label="Password"
+            htmlFor="user-password"
+            hint="Password minimal 8 karakter."
+          >
+            <Input
+              id="user-password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={form.password}
+              onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+              placeholder="••••••••"
+            />
+          </Field>
+        </form>
+      </Dialog>
 
       {users.length === 0 ? (
         <Card className="p-6 text-center text-sm text-ink-secondary">

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, Textarea } from "@/components/ui/field";
+import { Dialog } from "@/components/ui/dialog";
 
 /** Kelas row shared by the server page and this manager. */
 export interface KelasItem {
@@ -107,49 +108,51 @@ export default function KelasManager({ initialKelas }: { initialKelas: KelasItem
             Kelas / angkatan untuk santri, bisa diubah oleh admin.
           </p>
         </div>
-        <Button type="button" onClick={showForm ? cancelForm : openCreate}>
+        <Button type="button" onClick={openCreate}>
           <Plus className="h-4 w-4" aria-hidden />
-          {showForm ? "Batal" : "Tambah Kelas"}
+          Tambah Kelas
         </Button>
       </div>
 
-      {showForm && (
-        <Card className="p-5">
-          <h2 className="mb-4 text-lg font-semibold text-ink">
-            {editingId ? "Edit Kelas" : "Tambah Kelas"}
-          </h2>
-          <form onSubmit={handleSave} className="space-y-4">
-            <Field label="Nama Kelas" htmlFor="nama-kelas">
-              <Input
-                id="nama-kelas"
-                required
-                value={form.namaKelas}
-                onChange={(e) => setForm((f) => ({ ...f, namaKelas: e.target.value }))}
-                placeholder="mis. Angkatan 2025"
-              />
-            </Field>
+      {/* Create/edit form lives in a modal so it stays reachable without
+          scrolling back to the top of a long kelas list. */}
+      <Dialog
+        open={showForm}
+        onClose={cancelForm}
+        title={editingId ? "Edit Kelas" : "Tambah Kelas"}
+        footer={
+          <div className="flex gap-3">
+            <Button type="submit" form="form-kelas" disabled={loading} className="flex-1">
+              {loading ? "Menyimpan..." : "Simpan"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={cancelForm}>
+              Batal
+            </Button>
+          </div>
+        }
+      >
+        <form id="form-kelas" onSubmit={handleSave} className="space-y-4">
+          <Field label="Nama Kelas" htmlFor="nama-kelas">
+            <Input
+              id="nama-kelas"
+              required
+              value={form.namaKelas}
+              onChange={(e) => setForm((f) => ({ ...f, namaKelas: e.target.value }))}
+              placeholder="mis. Angkatan 2025"
+            />
+          </Field>
 
-            <Field label="Deskripsi" htmlFor="deskripsi-kelas">
-              <Textarea
-                id="deskripsi-kelas"
-                rows={3}
-                value={form.deskripsi}
-                onChange={(e) => setForm((f) => ({ ...f, deskripsi: e.target.value }))}
-                placeholder="Keterangan singkat (opsional)"
-              />
-            </Field>
-
-            <div className="flex gap-3">
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? "Menyimpan..." : "Simpan"}
-              </Button>
-              <Button type="button" variant="secondary" onClick={cancelForm}>
-                Batal
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+          <Field label="Deskripsi" htmlFor="deskripsi-kelas">
+            <Textarea
+              id="deskripsi-kelas"
+              rows={3}
+              value={form.deskripsi}
+              onChange={(e) => setForm((f) => ({ ...f, deskripsi: e.target.value }))}
+              placeholder="Keterangan singkat (opsional)"
+            />
+          </Field>
+        </form>
+      </Dialog>
 
       {kelas.length === 0 ? (
         <Card className="p-6 text-center text-sm text-ink-secondary">

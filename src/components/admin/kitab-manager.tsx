@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Field, Textarea } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
+import { Dialog } from "@/components/ui/dialog";
 
 /** Kitab row shared by the server page and this manager (JSON-serializable). */
 export interface KitabItem {
@@ -136,78 +137,80 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
             Daftar kitab, jumlah halaman, dan status aktif/nonaktif.
           </p>
         </div>
-        <Button type="button" onClick={showForm ? cancelForm : openCreate}>
+        <Button type="button" onClick={openCreate}>
           <Plus className="h-4 w-4" aria-hidden />
-          {showForm ? "Batal" : "Tambah Kitab"}
+          Tambah Kitab
         </Button>
       </div>
 
-      {showForm && (
-        <Card className="p-5">
-          <h2 className="mb-4 text-lg font-semibold text-ink">
-            {editingId ? "Edit Kitab" : "Tambah Kitab"}
-          </h2>
-          <form onSubmit={handleSave} className="space-y-4">
-            <Field label="Nama Kitab" htmlFor="nama-kitab">
-              <Input
-                id="nama-kitab"
-                required
-                value={form.namaKitab}
-                onChange={(e) => setForm((f) => ({ ...f, namaKitab: e.target.value }))}
-                placeholder="mis. Kitab Jurumiyah"
-              />
-            </Field>
+      {/* Create/edit form lives in a modal so it stays reachable without
+          scrolling back to the top of a long kitab list. */}
+      <Dialog
+        open={showForm}
+        onClose={cancelForm}
+        title={editingId ? "Edit Kitab" : "Tambah Kitab"}
+        footer={
+          <div className="flex gap-3">
+            <Button type="submit" form="form-kitab" disabled={loading} className="flex-1">
+              {loading ? "Menyimpan..." : "Simpan"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={cancelForm}>
+              Batal
+            </Button>
+          </div>
+        }
+      >
+        <form id="form-kitab" onSubmit={handleSave} className="space-y-4">
+          <Field label="Nama Kitab" htmlFor="nama-kitab">
+            <Input
+              id="nama-kitab"
+              required
+              value={form.namaKitab}
+              onChange={(e) => setForm((f) => ({ ...f, namaKitab: e.target.value }))}
+              placeholder="mis. Kitab Jurumiyah"
+            />
+          </Field>
 
-            <Field
-              label="Jumlah Halaman"
-              htmlFor="jumlah-halaman"
-              hint={editingId ? "Jumlah halaman tidak bisa dikurangi." : "Halaman akan dibuat otomatis."}
+          <Field
+            label="Jumlah Halaman"
+            htmlFor="jumlah-halaman"
+            hint={editingId ? "Jumlah halaman tidak bisa dikurangi." : "Halaman akan dibuat otomatis."}
+          >
+            <Input
+              id="jumlah-halaman"
+              type="number"
+              min={1}
+              step={1}
+              required
+              value={form.jumlahHalaman}
+              onChange={(e) => setForm((f) => ({ ...f, jumlahHalaman: e.target.value }))}
+            />
+          </Field>
+
+          <Field label="Deskripsi" htmlFor="deskripsi-kitab">
+            <Textarea
+              id="deskripsi-kitab"
+              rows={3}
+              value={form.deskripsi}
+              onChange={(e) => setForm((f) => ({ ...f, deskripsi: e.target.value }))}
+              placeholder="Keterangan singkat (opsional)"
+            />
+          </Field>
+
+          <Field label="Status" htmlFor="status-kitab">
+            <Select
+              id="status-kitab"
+              value={form.status}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, status: e.target.value as KitabForm["status"] }))
+              }
             >
-              <Input
-                id="jumlah-halaman"
-                type="number"
-                min={1}
-                step={1}
-                required
-                value={form.jumlahHalaman}
-                onChange={(e) => setForm((f) => ({ ...f, jumlahHalaman: e.target.value }))}
-              />
-            </Field>
-
-            <Field label="Deskripsi" htmlFor="deskripsi-kitab">
-              <Textarea
-                id="deskripsi-kitab"
-                rows={3}
-                value={form.deskripsi}
-                onChange={(e) => setForm((f) => ({ ...f, deskripsi: e.target.value }))}
-                placeholder="Keterangan singkat (opsional)"
-              />
-            </Field>
-
-            <Field label="Status" htmlFor="status-kitab">
-              <Select
-                id="status-kitab"
-                value={form.status}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, status: e.target.value as KitabForm["status"] }))
-                }
-              >
-                <option value="aktif">Aktif</option>
-                <option value="nonaktif">Nonaktif</option>
-              </Select>
-            </Field>
-
-            <div className="flex gap-3">
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? "Menyimpan..." : "Simpan"}
-              </Button>
-              <Button type="button" variant="secondary" onClick={cancelForm}>
-                Batal
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
+              <option value="aktif">Aktif</option>
+              <option value="nonaktif">Nonaktif</option>
+            </Select>
+          </Field>
+        </form>
+      </Dialog>
 
       {kitabs.length === 0 ? (
         <Card className="p-6 text-center text-sm text-ink-secondary">

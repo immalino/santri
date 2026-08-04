@@ -89,7 +89,7 @@ export function Dialog({ open, onClose, title, children, footer }: DialogProps) 
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="relative flex max-h-[92dvh] w-full flex-col rounded-t-3xl border border-border bg-background shadow-xl outline-none sm:max-h-[85vh] sm:max-w-3xl sm:rounded-2xl"
+        className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-3xl border border-border bg-background shadow-xl outline-none sm:max-h-[85vh] sm:max-w-3xl sm:rounded-2xl"
       >
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-6">
           <h2 className="min-w-0 truncate text-base font-semibold text-ink">{title}</h2>

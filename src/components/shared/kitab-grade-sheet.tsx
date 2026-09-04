@@ -256,6 +256,12 @@ export function KitabGradeSheet({
       setPages((prev) =>
         prev.map((p) => ({ ...p, persentase: values[p.halamanId] ?? 0 })),
       );
+      // Auto-unselect after a successful save so the user doesn't have to
+      // manually clear the selection. Also reset the bulk input and ensure
+      // the bulk-set modal is closed.
+      setSelected(new Set());
+      setBulkValue("");
+      setOpen(false);
     } catch {
       // Error sudah ditampilkan lewat toast.
     } finally {

@@ -46,11 +46,40 @@ export const kelasInputSchema = z.object({
 
 // --- Santri ----------------------------------------------------------------
 
-export const santriInputSchema = z.object({
+export const kategoriUsiaSchema = z.enum(["pra_remaja", "remaja", "pra_nikah"]);
+export const jenisKelaminSchema = z.enum(["laki_laki", "perempuan"]);
+
+export const KATEGORI_USIA_LABEL: Record<z.infer<typeof kategoriUsiaSchema>, string> = {
+  pra_remaja: "Pra-remaja",
+  remaja: "Remaja",
+  pra_nikah: "Pra-nikah",
+};
+
+export const JENIS_KELAMIN_LABEL: Record<z.infer<typeof jenisKelaminSchema>, string> = {
+  laki_laki: "Laki-laki",
+  perempuan: "Perempuan",
+};
+
+/** Create: jenis_kelamin required, kategori_usia optional (nullable). */
+export const santriCreateSchema = z.object({
   nama: z.string().trim().min(1, "Nama santri wajib diisi."),
   kelasId: z.string().uuid("Kelas tidak valid.").nullable().optional(),
   statusAktif: z.boolean().optional(),
+  kategoriUsia: kategoriUsiaSchema.nullable().optional(),
+  jenisKelamin: jenisKelaminSchema,
 });
+
+/** Partial update: every field optional so legacy null rows stay valid. */
+export const santriUpdateSchema = z.object({
+  nama: z.string().trim().min(1, "Nama santri wajib diisi.").optional(),
+  kelasId: z.string().uuid("Kelas tidak valid.").nullable().optional(),
+  statusAktif: z.boolean().optional(),
+  kategoriUsia: kategoriUsiaSchema.nullable().optional(),
+  jenisKelamin: jenisKelaminSchema.nullable().optional(),
+});
+
+/** Back-compat alias (create-shaped); prefer the split schemas above. */
+export const santriInputSchema = santriCreateSchema;
 
 // --- Users (admin creates accounts) ----------------------------------------
 

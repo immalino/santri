@@ -19,6 +19,9 @@ import {
 
 export type AbsensiStatus = "hadir" | "izin" | "tanpa_keterangan";
 
+export type KategoriUsia = "pra_remaja" | "remaja" | "pra_nikah";
+export type JenisKelamin = "laki_laki" | "perempuan";
+
 export interface KegiatanListItem {
   id: string;
   namaKegiatan: string;
@@ -91,6 +94,8 @@ export interface KegiatanPesertaItem {
   nama: string;
   kelasNama: string | null;
   statusAktif: boolean;
+  kategoriUsia: KategoriUsia | null;
+  jenisKelamin: JenisKelamin | null;
 }
 
 export interface KegiatanSesiItem {
@@ -129,6 +134,8 @@ export async function getKegiatanDetail(kegiatanId: string): Promise<KegiatanDet
       santriId: santri.id,
       nama: santri.nama,
       statusAktif: santri.statusAktif,
+      kategoriUsia: santri.kategoriUsia,
+      jenisKelamin: santri.jenisKelamin,
     })
     .from(kegiatanPeserta)
     .innerJoin(santri, eq(kegiatanPeserta.santriId, santri.id))
@@ -151,6 +158,8 @@ export async function getKegiatanDetail(kegiatanId: string): Promise<KegiatanDet
       nama: p.nama,
       kelasNama: kelasBySantri.get(p.santriId) ?? null,
       statusAktif: p.statusAktif,
+      kategoriUsia: p.kategoriUsia,
+      jenisKelamin: p.jenisKelamin,
     }))
     .sort((a, b) => a.nama.localeCompare(b.nama, "id"));
 
@@ -197,6 +206,8 @@ export interface SesiPesertaAbsensi {
   santriId: string;
   nama: string;
   kelasNama: string | null;
+  kategoriUsia: KategoriUsia | null;
+  jenisKelamin: JenisKelamin | null;
   /** null = not yet recorded for this sesi. */
   status: AbsensiStatus | null;
   keterangan: string | null;
@@ -240,6 +251,8 @@ export async function getSesiAbsensi(sesiId: string): Promise<SesiAbsensiData | 
       santriId: p.santriId,
       nama: p.nama,
       kelasNama: p.kelasNama,
+      kategoriUsia: p.kategoriUsia,
+      jenisKelamin: p.jenisKelamin,
       status: bySantri.get(p.santriId)?.status ?? null,
       keterangan: bySantri.get(p.santriId)?.keterangan ?? null,
     })),

@@ -3,19 +3,19 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { santri } from "@/db/schema";
 import { requireApiRole } from "@/lib/permissions";
-import { santriInputSchema } from "@/lib/validations";
+import { santriUpdateSchema } from "@/lib/validations";
 
 interface Params {
   params: Promise<{ id: string }>;
 }
 
-/** Update a santri (name, kelas, status aktif). */
+/** Update a santri (name, kelas, status aktif, kategori usia, jenis kelamin). */
 export async function PATCH(request: Request, { params }: Params) {
   const session = await requireApiRole(["admin"]);
   if (session instanceof Response) return session;
 
   const { id } = await params;
-  const parsed = santriInputSchema.safeParse(await request.json());
+  const parsed = santriUpdateSchema.safeParse(await request.json());
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "Data tidak valid." },
@@ -23,13 +23,15 @@ export async function PATCH(request: Request, { params }: Params) {
     );
   }
 
-  const { nama, kelasId, statusAktif } = parsed.data;
+  const { nama, kelasId, statusAktif, kategoriUsia, jenisKelamin } = parsed.data;
   const [updated] = await db
     .update(santri)
     .set({
-      nama,
-      kelasId: kelasId ?? null,
+      ...(nama !== undefined ? { nama } : {}),
+      ...(kelasId !== undefined ? { kelasId: kelasId ?? null } : {}),
       ...(statusAktif !== undefined ? { statusAktif } : {}),
+      ...(kategoriUsia !== undefined ? { kategoriUsia: kategoriUsia ?? null } : {}),
+      ...(jenisKelamin !== undefined ? { jenisKelamin: jenisKelamin ?? null } : {}),
     })
     .where(eq(santri.id, id))
     .returning();

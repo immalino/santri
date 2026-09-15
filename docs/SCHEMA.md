@@ -86,6 +86,8 @@ Referensi kelas/angkatan santri, bisa di-manage admin.
 | nama | text | |
 | kelas_id | uuid, FK → kelas.id, nullable | |
 | status_aktif | boolean, default true | |
+| kategori_usia | enum(`pra_remaja`, `remaja`, `pra_nikah`), nullable | kelompok usia pengajian; data lama `NULL` ("Belum diisi") |
+| jenis_kelamin | enum(`laki_laki`, `perempuan`), nullable | wajib diisi untuk santri baru; data lama `NULL` |
 | created_at | timestamp | |
 | updated_at | timestamp | |
 
@@ -229,6 +231,8 @@ import { pgTable, uuid, text, boolean, integer, timestamp, pgEnum, unique, index
 
 export const roleEnum = pgEnum("role", ["admin", "ustadz", "wali"]);
 export const kitabStatusEnum = pgEnum("kitab_status", ["aktif", "nonaktif"]);
+export const santriUsiaEnum = pgEnum("santri_usia", ["pra_remaja", "remaja", "pra_nikah"]);
+export const santriGenderEnum = pgEnum("santri_gender", ["laki_laki", "perempuan"]);
 
 export const kelas = pgTable("kelas", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -243,6 +247,8 @@ export const santri = pgTable("santri", {
   nama: text("nama").notNull(),
   kelasId: uuid("kelas_id").references(() => kelas.id),
   statusAktif: boolean("status_aktif").default(true).notNull(),
+  kategoriUsia: santriUsiaEnum("kategori_usia"),
+  jenisKelamin: santriGenderEnum("jenis_kelamin"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

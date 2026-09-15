@@ -13,7 +13,7 @@ export async function GET() {
   const [santris, kitabs] = await Promise.all([
     db.query.santri.findMany({
       where: (s, { eq }) => eq(s.statusAktif, true),
-      columns: { id: true, nama: true },
+      columns: { id: true, nama: true, kategoriUsia: true, jenisKelamin: true },
       with: { kelas: { columns: { namaKelas: true } } },
       orderBy: (s, { asc }) => [asc(s.nama)],
     }),
@@ -28,6 +28,8 @@ export async function GET() {
       id: s.id,
       nama: s.nama,
       kelasNama: s.kelas?.namaKelas ?? null,
+      kategoriUsia: s.kategoriUsia,
+      jenisKelamin: s.jenisKelamin,
     })),
     kitab: kitabs.map((k) => ({
       id: k.id,

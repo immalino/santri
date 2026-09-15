@@ -6,7 +6,7 @@ import { getKegiatanDetail } from "@/lib/absensi-stats";
 import type { PickerSantri } from "@/components/shared/peserta-picker";
 
 export const metadata = {
-  title: "Detail Kegiatan | Sistem Pendataan Pencapaian Santri",
+  title: "Detail Kegiatan | e-Santri",
 };
 
 /** Admin kegiatan detail (Fase 10): peserta + sesi management. */
@@ -21,7 +21,7 @@ export default async function AdminKegiatanDetailPage({
   const [detail, santris] = await Promise.all([
     getKegiatanDetail(id),
     db.query.santri.findMany({
-      columns: { id: true, nama: true, statusAktif: true },
+      columns: { id: true, nama: true, statusAktif: true, kategoriUsia: true, jenisKelamin: true },
       with: { kelas: { columns: { namaKelas: true } } },
       orderBy: (s, { asc }) => [asc(s.nama)],
     }),
@@ -33,6 +33,8 @@ export default async function AdminKegiatanDetailPage({
     nama: s.nama,
     kelasNama: s.kelas?.namaKelas ?? null,
     statusAktif: s.statusAktif,
+    kategoriUsia: s.kategoriUsia,
+    jenisKelamin: s.jenisKelamin,
   }));
 
   return (

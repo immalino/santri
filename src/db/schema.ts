@@ -27,6 +27,12 @@ export const kegiatanStatusEnum = pgEnum("kegiatan_status", ["aktif", "nonaktif"
 /** Attendance status per santri per session. */
 export const absensiStatusEnum = pgEnum("absensi_status", ["hadir", "izin", "tanpa_keterangan"]);
 
+/** Age group of a santri (nullable — legacy rows stay null until updated). */
+export const santriUsiaEnum = pgEnum("santri_usia", ["pra_remaja", "remaja", "pra_nikah"]);
+
+/** Gender of a santri (nullable — legacy rows stay null until updated). */
+export const santriGenderEnum = pgEnum("santri_gender", ["laki_laki", "perempuan"]);
+
 // ---------------------------------------------------------------------------
 // Auth tables (better-auth)
 //
@@ -133,6 +139,9 @@ export const santri = pgTable("santri", {
   nama: text("nama").notNull(),
   kelasId: uuid("kelas_id").references(() => kelas.id),
   statusAktif: boolean("status_aktif").default(true).notNull(),
+  // Nullable: existing rows stay null until the admin updates them manually.
+  kategoriUsia: santriUsiaEnum("kategori_usia"),
+  jenisKelamin: santriGenderEnum("jenis_kelamin"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

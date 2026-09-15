@@ -6,7 +6,7 @@ import SantriManager, {
 } from "@/components/admin/santri-manager";
 
 export const metadata = {
-  title: "Kelola Santri | Sistem Pendataan Pencapaian Santri",
+  title: "Kelola Santri | e-Santri",
 };
 
 /** Santri admin page (tasks 4.8–4.9). */
@@ -30,6 +30,8 @@ export default async function AdminSantriPage() {
     kelasId: r.kelasId,
     kelasNama: r.kelas?.namaKelas ?? null,
     statusAktif: r.statusAktif,
+    kategoriUsia: r.kategoriUsia,
+    jenisKelamin: r.jenisKelamin,
   }));
   const initialKelas: KelasOption[] = kelasRows.map((k) => ({
     id: k.id,

@@ -4,18 +4,45 @@ import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 export interface PickerSantri {
   id: string;
   nama: string;
   kelasNama: string | null;
   statusAktif: boolean;
+  kategoriUsia: "pra_remaja" | "remaja" | "pra_nikah" | null;
+  jenisKelamin: "laki_laki" | "perempuan" | null;
+}
+
+const KATEGORI_USIA_LABEL: Record<string, string> = {
+  pra_remaja: "Pra-remaja",
+  remaja: "Remaja",
+  pra_nikah: "Pra-nikah",
+};
+
+const JENIS_KELAMIN_LABEL: Record<string, string> = {
+  laki_laki: "Laki-laki",
+  perempuan: "Perempuan",
+};
+
+function santriMeta(s: PickerSantri): string {
+  const parts = [
+    s.kelasNama ?? "Tanpa kelas",
+    s.kategoriUsia ? KATEGORI_USIA_LABEL[s.kategoriUsia] : "Usia belum diisi",
+    s.jenisKelamin ? JENIS_KELAMIN_LABEL[s.jenisKelamin] : "Belum diisi",
+  ];
+  if (!s.statusAktif) parts.push("Nonaktif");
+  return parts.join(" • ");
 }
 
 /**
- * Participant picker (Fase 10): searchable checklist with "Pilih Semua" /
- * "Bersihkan" shortcuts. Inactive santri are still listed (badged) so
- * historical participants stay visible.
+ * Participant picker (Fase 10, extended Fase 11): searchable checklist with
+ * "Pilih Semua" / "Bersihkan" shortcuts plus kategori-usia & jenis-kelamin
+ * filters with a "Pilih hasil filter" shortcut — e.g. select all
+ * pra-nikah perempuan santri for one pengajian without tapping one by one.
+ * Inactive santri are still listed (badged) so historical participants stay
+ * visible.
  */
 export function PesertaPicker({
   allSantri,
@@ -27,19 +54,29 @@ export function PesertaPicker({
   onChange: (ids: string[]) => void;
 }) {
   const [query, setQuery] = useState("");
+  const [usiaFilter, setUsiaFilter] = useState("");
+  const [genderFilter, setGenderFilter] = useState("");
   const selectedSet = useMemo(() => new Set(selected), [selected]);
+
+  const filterActive = usiaFilter !== "" || genderFilter !== "" || query.trim() !== "";
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q
-      ? allSantri.filter(
-          (s) =>
-            s.nama.toLowerCase().includes(q) ||
-            (s.kelasNama ?? "").toLowerCase().includes(q),
-        )
-      : allSantri;
+    const list = allSantri.filter((s) => {
+      if (q) {
+        const hit =
+          s.nama.toLowerCase().includes(q) ||
+          (s.kelasNama ?? "").toLowerCase().includes(q);
+        if (!hit) return false;
+      }
+      if (usiaFilter === "null" ? s.kategoriUsia !== null : usiaFilter && s.kategoriUsia !== usiaFilter)
+        return false;
+      if (genderFilter === "null" ? s.jenisKelamin !== null : genderFilter && s.jenisKelamin !== genderFilter)
+        return false;
+      return true;
+    });
     return [...list].sort((a, b) => a.nama.localeCompare(b.nama, "id"));
-  }, [allSantri, query]);
+  }, [allSantri, query, usiaFilter, genderFilter]);
 
   function toggle(id: string) {
     if (selectedSet.has(id)) onChange(selected.filter((s) => s !== id));
@@ -52,6 +89,17 @@ export function PesertaPicker({
     const next = new Set(selected);
     for (const s of filtered) next.add(s.id);
     onChange([...next]);
+  }
+
+  /** Add only the santri matching the current usia/gender/search filter. */
+  function selectFiltered() {
+    selectAll();
+  }
+
+  function clearFilter() {
+    setQuery("");
+    setUsiaFilter("");
+    setGenderFilter("");
   }
 
   function clear() {
@@ -85,9 +133,63 @@ export function PesertaPicker({
         </div>
       </div>
 
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex flex-1 flex-col gap-2 sm:flex-row">
+          <div className="sm:flex-1">
+            <Select
+              value={usiaFilter}
+              onChange={(e) => setUsiaFilter(e.target.value)}
+              aria-label="Filter kategori usia"
+            >
+              <option value="">Semua usia</option>
+              <option value="pra_remaja">Pra-remaja</option>
+              <option value="remaja">Remaja</option>
+              <option value="pra_nikah">Pra-nikah</option>
+              <option value="null">Usia belum diisi</option>
+            </Select>
+          </div>
+          <div className="sm:flex-1">
+            <Select
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value)}
+              aria-label="Filter jenis kelamin"
+            >
+              <option value="">Semua gender</option>
+              <option value="laki_laki">Laki-laki</option>
+              <option value="perempuan">Perempuan</option>
+              <option value="null">Belum diisi</option>
+            </Select>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {filterActive ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={selectFiltered}
+              className="flex-1 sm:flex-none"
+            >
+              Pilih hasil filter ({filtered.length})
+            </Button>
+          ) : null}
+          {filterActive ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={clearFilter}
+              className="flex-1 sm:flex-none"
+            >
+              Reset filter
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
       <p className="text-xs text-ink-secondary" aria-live="polite">
         {selected.length} dari {allSantri.length} santri dipilih
-        {query.trim() ? ` (menampilkan ${filtered.length})` : ""}.
+        {filterActive ? ` (menampilkan ${filtered.length})` : ""}.
       </p>
 
       {filtered.length === 0 ? (
@@ -107,10 +209,7 @@ export function PesertaPicker({
                 />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-ink">{s.nama}</span>
-                  <span className="block text-xs text-ink-secondary">
-                    {s.kelasNama ?? "Tanpa kelas"}
-                    {!s.statusAktif ? " • Nonaktif" : ""}
-                  </span>
+                  <span className="block text-xs text-ink-secondary">{santriMeta(s)}</span>
                 </span>
               </label>
             </li>

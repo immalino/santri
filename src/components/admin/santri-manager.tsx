@@ -19,6 +19,8 @@ export interface SantriItem {
   kelasId: string | null;
   kelasNama: string | null;
   statusAktif: boolean;
+  kategoriUsia: "pra_remaja" | "remaja" | "pra_nikah" | null;
+  jenisKelamin: "laki_laki" | "perempuan" | null;
 }
 
 /** Kelas option for the form select. */
@@ -31,6 +33,27 @@ interface SantriForm {
   nama: string;
   kelasId: string;
   statusAktif: boolean;
+  kategoriUsia: string;
+  jenisKelamin: string;
+}
+
+const KATEGORI_USIA_OPTIONS = [
+  { value: "pra_remaja", label: "Pra-remaja" },
+  { value: "remaja", label: "Remaja" },
+  { value: "pra_nikah", label: "Pra-nikah" },
+] as const;
+
+const JENIS_KELAMIN_OPTIONS = [
+  { value: "laki_laki", label: "Laki-laki" },
+  { value: "perempuan", label: "Perempuan" },
+] as const;
+
+function kategoriUsiaLabel(value: SantriItem["kategoriUsia"]): string {
+  return KATEGORI_USIA_OPTIONS.find((o) => o.value === value)?.label ?? "Usia belum diisi";
+}
+
+function jenisKelaminLabel(value: SantriItem["jenisKelamin"]): string {
+  return JENIS_KELAMIN_OPTIONS.find((o) => o.value === value)?.label ?? "Belum diisi";
 }
 
 /**
@@ -46,7 +69,13 @@ export default function SantriManager({
 }) {
   const toast = useToast();
   const [santris, setSantris] = useState<SantriItem[]>(initialSantris);
-  const [form, setForm] = useState<SantriForm>({ nama: "", kelasId: "", statusAktif: true });
+  const [form, setForm] = useState<SantriForm>({
+    nama: "",
+    kelasId: "",
+    statusAktif: true,
+    kategoriUsia: "",
+    jenisKelamin: "",
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -57,13 +86,19 @@ export default function SantriManager({
 
   function openCreate() {
     setEditingId(null);
-    setForm({ nama: "", kelasId: "", statusAktif: true });
+    setForm({ nama: "", kelasId: "", statusAktif: true, kategoriUsia: "", jenisKelamin: "" });
     setShowForm(true);
   }
 
   function openEdit(item: SantriItem) {
     setEditingId(item.id);
-    setForm({ nama: item.nama, kelasId: item.kelasId ?? "", statusAktif: item.statusAktif });
+    setForm({
+      nama: item.nama,
+      kelasId: item.kelasId ?? "",
+      statusAktif: item.statusAktif,
+      kategoriUsia: item.kategoriUsia ?? "",
+      jenisKelamin: item.jenisKelamin ?? "",
+    });
     setShowForm(true);
   }
 
@@ -79,6 +114,12 @@ export default function SantriManager({
       nama: form.nama.trim(),
       kelasId: form.kelasId ? form.kelasId : null,
       ...(editingId ? { statusAktif: form.statusAktif } : {}),
+      kategoriUsia: form.kategoriUsia ? form.kategoriUsia : null,
+      ...(form.jenisKelamin
+        ? { jenisKelamin: form.jenisKelamin }
+        : editingId
+          ? { jenisKelamin: null }
+          : {}),
     };
     try {
       await toast.promise(
@@ -131,7 +172,7 @@ export default function SantriManager({
         <div>
           <h1 className="text-2xl font-semibold text-ink">Kelola Santri</h1>
           <p className="mt-1 text-sm text-ink-secondary">
-            Daftar santri beserta kelas dan status aktif.
+            Daftar santri beserta kelas, kategori usia, jenis kelamin, dan status aktif.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -203,6 +244,37 @@ export default function SantriManager({
               </Select>
             </Field>
           )}
+
+          <Field label="Kategori Usia" htmlFor="usia-santri" hint="Opsional — data lama boleh tetap kosong.">
+            <Select
+              id="usia-santri"
+              value={form.kategoriUsia}
+              onChange={(e) => setForm((f) => ({ ...f, kategoriUsia: e.target.value }))}
+            >
+              <option value="">Belum diisi</option>
+              {KATEGORI_USIA_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="Jenis Kelamin" htmlFor="gender-santri">
+            <Select
+              id="gender-santri"
+              required={!editingId}
+              value={form.jenisKelamin}
+              onChange={(e) => setForm((f) => ({ ...f, jenisKelamin: e.target.value }))}
+            >
+              <option value="">Pilih jenis kelamin</option>
+              {JENIS_KELAMIN_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
         </form>
       </Dialog>
 
@@ -224,6 +296,10 @@ export default function SantriManager({
                     <p className="flex items-center gap-1 text-sm text-ink-secondary">
                       <School className="h-3.5 w-3.5" aria-hidden />
                       {item.kelasNama ?? "Tanpa kelas"}
+                    </p>
+                    <p className="mt-1 flex flex-wrap gap-1">
+                      <Badge variant="secondary">{kategoriUsiaLabel(item.kategoriUsia)}</Badge>
+                      <Badge variant="secondary">{jenisKelaminLabel(item.jenisKelamin)}</Badge>
                     </p>
                   </div>
                 </div>

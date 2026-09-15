@@ -148,11 +148,11 @@ async function main(): Promise<void> {
   const santriRows = await db
     .insert(santri)
     .values([
-      { nama: "Ahmad Fauzi", kelasId: kelasRows[0].id },
-      { nama: "Budi Santoso", kelasId: kelasRows[0].id },
-      { nama: "Citra Ayu", kelasId: kelasRows[1].id },
-      { nama: "Dewi Lestari", kelasId: kelasRows[1].id },
-      { nama: "Eko Prasetyo", kelasId: kelasRows[2].id },
+      { nama: "Ahmad Fauzi", kelasId: kelasRows[0].id, kategoriUsia: "pra_nikah", jenisKelamin: "laki_laki" },
+      { nama: "Budi Santoso", kelasId: kelasRows[0].id, kategoriUsia: "remaja", jenisKelamin: "laki_laki" },
+      { nama: "Citra Ayu", kelasId: kelasRows[1].id, kategoriUsia: "remaja", jenisKelamin: "perempuan" },
+      { nama: "Dewi Lestari", kelasId: kelasRows[1].id, kategoriUsia: "pra_remaja", jenisKelamin: "perempuan" },
+      { nama: "Eko Prasetyo", kelasId: kelasRows[2].id, kategoriUsia: "pra_remaja", jenisKelamin: "laki_laki" },
     ])
     .returning();
 

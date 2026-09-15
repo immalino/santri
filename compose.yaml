@@ -1,0 +1,38 @@
+# Local PostgreSQL for development (Fase 10+).
+#
+# Usage:
+#   npm run db:up     # start postgres in background
+#   npm run db:push   # create tables from src/db/schema.ts
+#   npm run db:seed   # fill example data
+#   npm run dev       # start Next.js (uses DATABASE_URL from .env.local)
+#   npm run db:down   # stop postgres (data kept in the santri-pgdata volume)
+#
+# Fresh start (wipe all local data):
+#   docker compose down -v
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: santri-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: santri
+      POSTGRES_PASSWORD: santri
+      POSTGRES_DB: santri
+    ports:
+      - "5432:5432"
+    volumes:
+      - santri-pgdata:/var/lib/postgresql/data
+      # Enables pgcrypto (gen_random_uuid()) on first init — the schema uses
+      # uuid defaultRandom(), and vanilla postgres lacks it (Supabase has it
+      # pre-enabled, which is why this was never needed before).
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-extensions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U santri -d santri"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  santri-pgdata:

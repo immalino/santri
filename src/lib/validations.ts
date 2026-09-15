@@ -92,6 +92,54 @@ export const waliSantriReplaceSchema = z.object({
   santriIds: z.array(z.string().uuid("Santri tidak valid.")).default([]),
 });
 
+/** Replace the full set of santri registered to one kegiatan. */
+export const kegiatanPesertaReplaceSchema = z.object({
+  santriIds: z.array(z.string().uuid("Santri tidak valid.")).default([]),
+});
+
+const tanggalSesiSchema = z.coerce.date("Tanggal sesi tidak valid.");
+
+// --- Kegiatan (attendance events) --------------------------------------------
+
+export const kegiatanCreateSchema = z.object({
+  namaKegiatan: z.string().trim().min(1, "Nama kegiatan wajib diisi."),
+  deskripsi: deskripsiOptional,
+  status: z.enum(["aktif", "nonaktif"]).optional(),
+  /** First meeting date — a sesi is auto-created from it. */
+  tanggalPertama: tanggalSesiSchema,
+  pesertaIds: z.array(z.string().uuid("Santri tidak valid.")).default([]),
+});
+
+/** Partial update: every field optional (e.g. toggling status only). */
+export const kegiatanUpdateSchema = z.object({
+  namaKegiatan: z.string().trim().min(1, "Nama kegiatan wajib diisi.").optional(),
+  deskripsi: deskripsiOptional,
+  status: z.enum(["aktif", "nonaktif"]).optional(),
+});
+
+// --- Kegiatan sesi (one meeting date of a kegiatan) --------------------------
+
+export const sesiInputSchema = z.object({
+  tanggal: tanggalSesiSchema,
+  judul: z.string().trim().max(120, "Judul maksimal 120 karakter.").optional().or(z.literal("")),
+  catatan: deskripsiOptional,
+});
+
+// --- Absensi (per-santri status in one sesi) ----------------------------------
+
+export const absensiStatusSchema = z.enum(["hadir", "izin", "tanpa_keterangan"]);
+
+const absensiItemSchema = z.object({
+  santriId: z.string().uuid("Santri tidak valid."),
+  status: absensiStatusSchema,
+  keterangan: z.string().trim().max(280, "Keterangan maksimal 280 karakter.").optional().or(z.literal("")),
+});
+
+/** Batch upsert of attendance for one sesi. */
+export const absensiInputSchema = z.object({
+  nilai: z.array(absensiItemSchema).min(1, "Minimal satu santri diabsen."),
+});
+
 // --- Self-service password change -------------------------------------------
 
 /** Self password change: verify current password + matching confirmation. */

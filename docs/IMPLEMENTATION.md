@@ -2,7 +2,7 @@
 
 **Project:** Sistem Pendataan Pencapaian Santri
 **Status:** 🔄 Dalam Pengerjaan (update checklist di bawah setiap selesai mengerjakan)
-**Terakhir di-update:** 2026-08-04
+**Terakhir di-update:** 2026-09-15
 
 > Plan ini ditulis seperti arahan **senior developer → junior developer**. Idenya: kamu (junior, manusia atau AI) mengerjakan step-by-step sesuai urutan, centang checklist ketika selesai, dan jangan lompat ke fase berikutnya sebelum fase sebelumnya **Definition of Done**-nya terpenuhi.
 
@@ -40,6 +40,7 @@
 - [x] **Fase 7 — Polishing, Dark Mode & Verifikasi Akhir** (7.10 deploy opsional — menunggu permintaan user)
 - [x] **Fase 8 — Daftar Santri & Detail Pencapaian (Semua Role)**
 - [x] **Fase 9 — Pengaturan Akun (Ganti Password Sendiri)**
+- [x] **Fase 10 — Absensi Kegiatan (Admin, Ustadz, Wali read-only)**
 
 ---
 
@@ -320,7 +321,7 @@
 - [x] `npm run lint` & `npm run build` hijau.
 
 > 📝 **Catatan Fase 4 (deviasi/langkah yang ditemukan saat implementasi):**
-> - **`drizzle-kit push` crash di Node 24.** Migrasi kolom `banned`/`ban_reason`/`ban_expires_at` di tabel `user` dijalankan lewat skrip SQL workaround `scripts/apply-ban-columns.ts` (additive, `ADD COLUMN IF NOT EXISTS`) karena `npm run db:push` tidak bisa dipakai sampai drizzle-kit di-upgrade. Skrip ini TEMPORER — jangan di-commit.
+> - **`drizzle-kit push` crash saat introspeksi (bukan salah Node).** Migrasi kolom `banned`/`ban_reason`/`ban_expires_at` di tabel `user` dijalankan lewat skrip SQL workaround `scripts/apply-ban-columns.ts` (additive, `ADD COLUMN IF NOT EXISTS`). Skrip ini TEMPORER — jangan di-commit. Diagnosis 2026-09-15 (lihat Catatan Fase 10): race di introspeksi konkuren drizzle-kit 0.31.10 mencampur baris FK ke hasil CHECK — crash deterministik di DB prod. **Jangan pakai `push` ke prod** sampai bug upstream diperbaiki; pakai skrip SQL additive.
 > - **Penambahan kolom ban via better-auth admin plugin.** `banUser` di-map ke kolom snake_case `ban_reason`/`ban_expires_at` melalui opsi `schema.user.fields` plugin admin.
 > - **Pasang role kustom lewat `data: { role }` pada `auth.api.createUser()`** (bukan `body.role`). Tipe `role` bawaan `createUser` dibatasi `"user" | "admin"`, jadi role RBAC (ustadz/wali) diteruskan lewat field `data` yang bertipe `Record<string, any>` — runtime plugin mengekstraknya (`ctx.body.data.role`) dan menyetelnya sebagai role user. Verifikasi build hijau.
 > - **Keputusan 4.13 — nonaktif wali TIDAK membersihkan `wali_santri`.** Menonaktifkan akun dipakai plugin **ban** (cabut session, cegah login; baris & relasi tetap). Ini konsisten dengan pola soft-delete yang sudah dipakai `kitab` (PRD #9) & `santri` (set `status_aktif: false`): data historis & FK tetap utuh, admin bisa reassign via manager wali↔santri. Keputusan ini menggantikan usulan "cascade/cleanup" di teks task 4.13.
@@ -517,6 +518,38 @@
 
 ---
 
+## 10c. Fase 10 — Absensi Kegiatan (Admin, Ustadz, Wali read-only)
+
+**Tujuan:** Admin & ustadz bisa membuat kegiatan yang perlu diabsen, mendaftarkan santri peserta (manual + Pilih Semua), dan mencatat kehadiran per sesi pertemuan. Kegiatan mendukung sekali jalan (1 sesi) maupun rutin (banyak sesi). Wali melihat riwayat absensi anaknya (read-only).
+
+### Task
+
+- [x] **10.1** Skema DB (`src/db/schema.ts`): enum `kegiatan_status` (`aktif`/`nonaktif`) & `absensi_status` (`hadir`/`izin`/`tanpa_keterangan`); tabel `kegiatan` (+`dibuat_oleh` text FK user), `kegiatan_peserta` (unique kegiatan+santri, index keduanya), `kegiatan_sesi` (tanggal, judul, catatan nullable), `absensi` (unique sesi+santri, index keduanya, keterangan nullable). Relasi Drizzle untuk semuanya. Migrasi: `npm run db:push` dengan `.env.local` (dijalankan di env dengan DATABASE_URL).
+- [x] **10.2** Validasi zod (`src/lib/validations.ts`): `kegiatanCreateSchema` (nama wajib, tanggalPertama coerce date, pesertaIds default []), `kegiatanUpdateSchema` (partial), `kegiatanPesertaReplaceSchema`, `sesiInputSchema` (tanggal + judul/catatan opsional), `absensiInputSchema` (status enum + keterangan max 280 opsional).
+- [x] **10.3** Helper `src/lib/absensi-stats.ts` (shared API + pages): `getKegiatanList` (opsional filter santriIds untuk wali), `getKegiatanDetail` (peserta + sesi + hitungan hadir/terdata), `getSesiAbsensi` (peserta merge status, null = belum diabsen), `getSantriAbsensi` (riwayat per kegiatan + ringkasan hadir/izin/tanpaKet/belumDiabsen).
+- [x] **10.4** API routes (semua write `requireApiRole(["admin","ustadz"])`): `GET/POST /api/kegiatan` (POST transaksi: kegiatan + peserta valid + sesi pertama; GET wali terfilter), `GET/PATCH/DELETE /api/kegiatan/[id]` (DELETE = soft nonaktif), `GET/PUT /api/kegiatan/[id]/peserta` (replace atomik), `GET/POST .../sesi`, `PATCH/DELETE .../sesi/[sesiId]`, `GET/POST .../absensi` (batch upsert `onConflictDoUpdate`, hanya peserta terdaftar), `GET /api/santri/[id]/absensi` (wali ownership via `wali_santri`, 403 bila bukan anaknya).
+- [x] **10.5** Komponen shared (`src/components/shared/`): `peserta-picker.tsx` (search + Pilih Semua/Bersihkan berbasis filter + hitungan), `kegiatan-manager.tsx` (list grid kartu + modal create/edit + toggle status), `kegiatan-detail-manager.tsx` (edit peserta + CRUD sesi + link Isi Absensi), `absensi-sheet.tsx` (toggle 3 status per santri, keterangan saat izin, bulk Semua Hadir, simpan hanya yang berubah, tombol sticky), `absensi-history.tsx` (read-only, expand per sesi).
+- [x] **10.6** Halaman admin + ustadz: `/admin|ustadz/kegiatan` (list), `/[id]` (detail), `/[id]/sesi/[sesiId]` (input). Nav (`role-nav.tsx`): item "Kegiatan" (ikon `CalendarCheck`) untuk admin & ustadz; mobile grid tambah `grid-cols-4/5` (admin 4 item + Lainnya = 5 sel).
+- [x] **10.7** Wali: `/wali/santri/[id]` render `AbsensiHistory` di bawah progress kitab (fetch paralel dengan progress).
+- [x] **10.8** Seed: contoh "Kajian Rutin Sabtu" (5 peserta, 2 sesi, 5 baris absensi termasuk izin "sakit").
+- [x] **10.9** Sinkronkan docs: `PRD.md` §10, `SCHEMA.md` (§2 + diagram), `ARCHITECTURE.md` (§3 + §4), `DESIGN.md` §4, `IMPLEMENTATION.md` (fase ini).
+
+### Definition of Done (Fase 10)
+
+- [x] Admin/ustadz bisa buat kegiatan + daftarkan peserta (termasuk Pilih Semua) + tambah sesi + input absensi; pencatatan ulang meng-update (bukan duplikat).
+- [x] Kegiatan sekali jalan (1 sesi) & rutin (N sesi) didukung satu alur (sesi pertama otomatis).
+- [x] Wali hanya lihat absensi anaknya (read-only, tanpa affordance edit); wali POST → 403 (guard API).
+- [x] `npm run lint` & `npm run build` hijau (skema zod diverifikasi via skrip tsx; E2E penuh menunggu DATABASE_URL).
+
+> 📝 **Catatan Fase 10:**
+> - **Keputusan yang dikonfirmasi user:** status = hadir/izin/tanpa keterangan (keterangan izin opsional, mis. "sakit"); pengelola = admin & ustadz + wali lihat; peserta manual + Pilih Semua; hapus peserta simpan histori (absensi sesi lama tetap); boleh >1 sesi per tanggal (beda judul).
+> - **DB lokal (compose):** `compose.yaml` + `docker/postgres/init.sql` (aktifkan `pgcrypto` untuk `gen_random_uuid`) + `.env.local` (gitignored). Alur: `npm run db:up` → `db:push` → `db:seed` → `npm run dev`. Terverifikasi 2026-09-15 (push + seed + E2E guard 403 hijau).
+> - **DB prod (2026-09-15):** `db:push` crash di "Pulling schema from database" — root cause terdiagnosis via instrumentasi `bin.cjs` (sementara, sudah di-revert): baris FK tabel `halaman` (`halaman_kitab_id_kitab_id_fk`, `constraint_type: "f"`) masuk ke result set CHECK-constraint tabel `kelas` → `.replace()` atas `undefined`. Ini race introspeksi konkuren drizzle-kit 0.31.10 (bug upstream masih terbuka di versi terbaru; bukan spesifik Node 24 — terjadi juga di Node 20/22). Solusi: migrasi Fase 10 diterapkan via skrip SQL satu-kali (additive: 2 enum + 4 tabel + FK/index, tanpa sentuh data lama), terverifikasi (4 tabel + 2 enum ada; data lama utuh: 9 user, 28 santri, 25 kitab, 10230 pencapaian). Skrip TEMPORER, sudah dihapus, tidak di-commit (pola sama seperti Fase 4).
+> - **`accent-(--color-primary)`** dipakai untuk checkbox di `peserta-picker` (Tailwind 4 arbitrary value) — alternatif bila bermasalah: `accent-primary`.
+> - **Admin mobile nav 5 sel** (4 item + Lainnya) memakai `grid-cols-5` — label 11px, dipadatkan.
+
+---
+
 ## 11. Ringkasan Aturan & Referensi (Tidak Boleh Dilupakan)
 
 | Aturan | Sumber |
@@ -525,6 +558,7 @@
 | Database snake_case, PK UUID, `created_at`/`updated_at` | SCHEMA.md |
 | `pencapaian` = nilai terakhir saja → UPSERT, bukan INSERT baru | PRD #9 / ARCHITECTURE |
 | `kitab` soft delete via `status`; jangan DELETE baris dengan data | PRD #9 / CLAUDE.md |
+| `kegiatan` soft delete via `status`; `absensi` upsert per (sesi, santri) | PRD §10 / Fase 10 |
 | Validasi persentase 0-100 di level aplikasi (zod), bukan DB | CLAUDE.md / SCHEMA |
 | Role dicek ulang di setiap handler server/API — proxy hanya optimasi | CLAUDE.md |
 | Wali hanya boleh akses santri yang terhubung (`wali_santri`) | CLAUDE.md |

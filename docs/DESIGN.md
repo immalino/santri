@@ -44,18 +44,21 @@ Progress bar per kitab menggunakan gradasi hijau → gold sesuai persentase (0% 
 Tidak ada sidebar kompleks seperti referensi — cukup 3-4 menu utama per role di bottom nav (mobile) yang jadi top nav horizontal saat desktop.
 
 ### Admin
-- Bottom nav: Dashboard, Kitab, Santri, Lainnya (Ustadz/Wali)
+- Bottom nav: Dashboard, Kitab, Santri, Kegiatan, Lainnya (Ustadz/Wali)
 - Dashboard: ringkasan card sederhana (Total Santri, Total Kitab, Rata-rata Progress) — versi ringan dari card statistik di referensi, tanpa chart donut kompleks
-- List Kitab/Santri/Ustadz/Wali: **grid kartu** (1 kolom di mobile → 2 kolom di desktop). Keputusan implementasi Fase 7: grid kartu dipertahankan di semua breakpoint demi konsistensi — tidak memakai table di desktop (deviasi dari draft awal §4 ini; disepakati saat QA Fase 7).
+- List Kitab/Santri/Ustadz/Wali/Kegiatan: **grid kartu** (1 kolom di mobile → 2 kolom di desktop). Keputusan implementasi Fase 7: grid kartu dipertahankan di semua breakpoint demi konsistensi — tidak memakai table di desktop (deviasi dari draft awal §4 ini; disepakati saat QA Fase 7).
+- Halaman Kegiatan (Fase 10): list kartu (nama, jumlah peserta/sesi, tanggal terakhir) → **detail kegiatan** (seksi Peserta dengan search + Pilih Semua/Bersihkan, seksi Sesi Pertemuan) → **input absensi per sesi** (toggle 3 status per santri + keterangan saat izin, bulk "Semua Hadir", tombol Simpan sticky)
 
 ### Ustadz
-- Bottom nav: Input Nilai, Santri, Riwayat
+- Bottom nav: Input Nilai, Santri, Kegiatan, Riwayat
 - Halaman Input: pilih santri (search/dropdown) → pilih kitab → **grid kotak halaman** — tiap kotak menampilkan nomor halaman, isi warna kotak (gradasi hijau→gold) setinggi persentase sehingga "penuh/tidaknya" kotak = progres halaman itu; bulk set: tap pilih satu, tekan lama & seret pilih banyak, lalu set semua halaman terpilih ke satu nilai (preset/input kustom); tombol Simpan sticky di bawah (mobile)
 - Halaman Santri (Fase 8): daftar santri (kartu + rata-rata keseluruhan) → **detail santri** (card kitab editable, link ke grid nilai) → **grid nilai per halaman** (pola sama dengan Input Nilai, nilai lama ter-preload)
+- Halaman Kegiatan (Fase 10): sama seperti admin (CRUD + input absensi)
 
 ### Wali Santri
 - Bottom nav: Santri
 - Halaman Santri (Fase 8): daftar anak yang terhubung (kartu + rata-rata keseluruhan) → **detail read-only**: card per kitab dengan progress bar horizontal + persentase, tap untuk expand breakdown per halaman — tanpa affordance edit (bukan switch, karena tiap anak punya URL detail sendiri)
+- Riwayat Absensi (Fase 10): seksi di bawah progress kitab — card per kegiatan (X hadir • Y izin • Z tanpa ket. • N sesi), tap untuk expand status per sesi dengan badge + keterangan izin
 
 ## 5. Komponen UI (Tailwind, custom — tanpa library komponen)
 

@@ -22,6 +22,10 @@ import {
   halaman,
   waliSantri,
   pencapaian,
+  kegiatan,
+  kegiatanPeserta,
+  kegiatanSesi,
+  absensi,
 } from "./schema";
 
 // ---------------------------------------------------------------------------
@@ -107,6 +111,10 @@ async function gradeRange(
 
 async function main(): Promise<void> {
   console.log("Clearing existing data...");
+  await db.delete(absensi).execute();
+  await db.delete(kegiatanSesi).execute();
+  await db.delete(kegiatanPeserta).execute();
+  await db.delete(kegiatan).execute();
   await db.delete(pencapaian).execute();
   await db.delete(waliSantri).execute();
   await db.delete(halaman).execute();
@@ -188,6 +196,39 @@ async function main(): Promise<void> {
 
   // Citra Ayu: Safinah just started
   await gradeRange(santriRows[2].id, safinah.halaman, 1, 3, 25, ustadz1.id);
+
+  // --- Kegiatan + sesi + absensi (Fase 10) ---
+  // Kajian Rutin Sabtu: all 5 santri registered, 2 sesi recorded.
+  const [kajian] = await db
+    .insert(kegiatan)
+    .values({
+      namaKegiatan: "Kajian Rutin Sabtu",
+      deskripsi: "Kajian pekanan setiap Sabtu pagi.",
+      dibuatOleh: ustadz1.id,
+    })
+    .returning();
+  await db
+    .insert(kegiatanPeserta)
+    .values(santriRows.map((s) => ({ kegiatanId: kajian.id, santriId: s.id })))
+    .execute();
+  const sesiRows = await db
+    .insert(kegiatanSesi)
+    .values([
+      { kegiatanId: kajian.id, tanggal: new Date("2026-09-05T08:00:00"), judul: "Pertemuan 1" },
+      { kegiatanId: kajian.id, tanggal: new Date("2026-09-12T08:00:00"), judul: "Pertemuan 2" },
+    ])
+    .returning();
+  await db
+    .insert(absensi)
+    .values([
+      { sesiId: sesiRows[0].id, santriId: santriRows[0].id, status: "hadir", dicatatOleh: ustadz1.id },
+      { sesiId: sesiRows[0].id, santriId: santriRows[1].id, status: "hadir", dicatatOleh: ustadz1.id },
+      { sesiId: sesiRows[0].id, santriId: santriRows[2].id, status: "izin", keterangan: "sakit", dicatatOleh: ustadz1.id },
+      { sesiId: sesiRows[1].id, santriId: santriRows[0].id, status: "hadir", dicatatOleh: ustadz2.id },
+      { sesiId: sesiRows[1].id, santriId: santriRows[1].id, status: "tanpa_keterangan", dicatatOleh: ustadz2.id },
+    ])
+    .execute();
+  console.log("Created 1 kegiatan with 2 sesi and 5 absensi rows.");
 
   console.log("\nSeed selesai ✅\n");
   console.log("Akun login (password semua: " + PASSWORD + "):");

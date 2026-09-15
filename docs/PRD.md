@@ -65,3 +65,10 @@ Wali ──(many-to-many)── Santri ──── Pencapaian ──── Kita
 ## 9. Keputusan
 - Histori perubahan persentase per halaman: **sementara cukup nilai terakhir saja** (tidak perlu log semua perubahan untuk MVP)
 - Kitab yang dinonaktifkan: **tetap ditampilkan** di progress santri (soft delete, bukan disembunyikan)
+
+## 10. Fitur Absensi (Fase 10, di luar MVP awal)
+- **Kegiatan** — nama, deskripsi, status aktif/nonaktif (CRUD oleh Admin & Ustadz; saat dibuat otomatis tercipta sesi pertama dari tanggal yang diisi)
+- **Peserta** — santri yang terdaftar per kegiatan, dipilih manual + tombol Pilih Semua; bisa tambah/hapus kapan saja; menghapus peserta tidak menghapus absensi sesi lama
+- **Sesi** — satu tanggal pertemuan per kegiatan (kegiatan sekali jalan = 1 sesi, kegiatan rutin = banyak sesi; boleh >1 sesi di tanggal sama, dibedakan lewat judul)
+- **Absensi** — per santri per sesi: `hadir` / `izin` (+keterangan opsional, misal "sakit") / `tanpa keterangan`; sesi yang belum dicatat = "belum diabsen"; dicatat ulang = update (bukan duplikat)
+- **Wali Santri** — lihat riwayat absensi anak(nya), read-only

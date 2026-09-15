@@ -33,6 +33,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
       /dashboard          -> rekap semua santri
       /kitab              -> CRUD kitab (+ auto-generate halaman)
       /santri             -> CRUD santri (+ /[id] detail editable, /[id]/kitab/[kitabId] grid nilai)
+      /kegiatan           -> CRUD kegiatan (+ /[id] peserta & sesi, /[id]/sesi/[sesiId] input absensi)
       /kelas              -> CRUD kelas (link dari halaman santri)
       /ustadz             -> CRUD akun ustadz
       /wali               -> CRUD akun wali + hubungkan ke santri
@@ -40,33 +41,36 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
     /ustadz
       /input              -> pilih santri -> pilih kitab -> input persentase
       /santri             -> daftar santri (+ /[id] detail editable, /[id]/kitab/[kitabId] grid nilai)
+      /kegiatan           -> CRUD kegiatan (+ /[id] peserta & sesi, /[id]/sesi/[sesiId] input absensi)
       /riwayat            -> riwayat penilaian
       /pengaturan         -> ganti password sendiri
     /wali
-      /santri             -> daftar anak (+ /[id] detail read-only, expand per halaman)
+      /santri             -> daftar anak (+ /[id] detail read-only: progress kitab + riwayat absensi)
       /pengaturan         -> ganti password sendiri
     /api
       /auth/[...all]      -> better-auth handler
       /kitab              (+ /[id])
       /kelas              (+ /[id])
-      /santri             (+ /[id], /[id]/progress)
+      /santri             (+ /[id], /[id]/progress, /[id]/absensi)
       /users              (+ /[id])
       /wali-santri
+      /kegiatan           (+ /[id], /[id]/peserta, /[id]/sesi, /[id]/sesi/[sesiId], .../absensi)
       /pencapaian         (+ /riwayat)
       /ustadz/data
       /admin/dashboard
-  /db
-    schema.ts             -> skema Drizzle (tabel & relasi)
-    index.ts              -> koneksi Drizzle ke Supabase
-  /lib
-    auth.ts               -> konfigurasi better-auth (role, session)
-    auth-client.ts         -> client-side auth helper
-    permissions.ts         -> requireRole / requireApiRole
-    roles.ts               -> Role, roleHome, roleLabel (tanpa import server)
-  /components
-    /ui                   -> Button, Card, Input, PasswordInput, Select, Badge, ProgressBar, Skeleton, ThemeToggle
-    /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink, ChangePasswordForm
-    /admin, /wali
+   /db
+     schema.ts             -> skema Drizzle (tabel & relasi, termasuk kegiatan/absensi Fase 10)
+     index.ts              -> koneksi Drizzle ke Supabase
+   /lib
+     auth.ts               -> konfigurasi better-auth (role, session)
+     auth-client.ts         -> client-side auth helper
+     permissions.ts         -> requireRole / requireApiRole
+     roles.ts               -> Role, roleHome, roleLabel (tanpa import server)
+     absensi-stats.ts       -> agregasi kegiatan/sesi/absensi (shared API + pages)
+   /components
+     /ui                   -> Button, Card, Input, PasswordInput, Select, Badge, ProgressBar, Skeleton, ThemeToggle
+     /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink, ChangePasswordForm, KegiatanManager, KegiatanDetailManager, PesertaPicker, AbsensiSheet, AbsensiHistory
+     /admin, /wali
   proxy.ts                 -> Next 16 proxy (pengganti middleware.ts)
 ```
 
@@ -81,12 +85,18 @@ wali_santri      (wali_id, santri_id)         -- relasi many-to-many
 kitab            (id, nama, jumlah_halaman, deskripsi, status[aktif|nonaktif])
 halaman          (id, kitab_id, nomor_halaman) -- auto-generate saat kitab dibuat/diedit
 pencapaian       (id, santri_id, halaman_id, persentase, dinilai_oleh(users.id), tanggal)
+kegiatan         (id, nama, deskripsi, status[aktif|nonaktif], dibuat_oleh(users.id))
+kegiatan_peserta (kegiatan_id, santri_id)      -- santri terdaftar per kegiatan
+kegiatan_sesi    (id, kegiatan_id, tanggal, judul, catatan) -- satu baris per pertemuan
+absensi          (id, sesi_id, santri_id, status[hadir|izin|tanpa_keterangan], keterangan, dicatat_oleh(users.id), tanggal)
 ```
 
 Catatan implementasi:
 - `pencapaian` menyimpan **nilai terakhir saja** per (santri, halaman) — bukan log histori (sesuai keputusan PRD #9). Cukup `UPDATE` record yang sudah ada, bukan `INSERT` baru tiap kali dinilai ulang.
-- `kitab` yang nonaktif tetap tampil di progress santri (soft delete via kolom `status`, bukan `DELETE`).
+- `absensi` mengikuti pola yang sama: **satu baris per (sesi, santri)**, pencatatan ulang = `UPSERT` (`onConflictDoUpdate`), bukan `INSERT` baru.
+- `kitab` yang nonaktif tetap tampil di progress santri (soft delete via kolom `status`, bukan `DELETE`). `kegiatan` memakai pola soft delete yang sama.
 - Saat jumlah halaman kitab ditambah, sistem cukup `INSERT` baris `halaman` baru tanpa menyentuh baris lama — data `pencapaian` yang sudah ada tetap aman.
+- Saat kegiatan dibuat, sesi pertama otomatis dibuat dari tanggal yang diisi — kegiatan sekali jalan cukup 1 sesi, kegiatan rutin tambah sesi lagi dari halaman detail. Menghapus peserta tidak menghapus baris `absensi` historis.
 
 ## 5. Autentikasi & Otorisasi
 

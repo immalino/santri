@@ -21,6 +21,12 @@ export const roleEnum = pgEnum("role", ["admin", "ustadz", "wali"]);
 /** Soft-delete status for a kitab. */
 export const kitabStatusEnum = pgEnum("kitab_status", ["aktif", "nonaktif"]);
 
+/** Soft-delete status for a kegiatan (same pattern as kitab). */
+export const kegiatanStatusEnum = pgEnum("kegiatan_status", ["aktif", "nonaktif"]);
+
+/** Attendance status per santri per session. */
+export const absensiStatusEnum = pgEnum("absensi_status", ["hadir", "izin", "tanpa_keterangan"]);
+
 // ---------------------------------------------------------------------------
 // Auth tables (better-auth)
 //
@@ -216,6 +222,104 @@ export const waliSantri = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Attendance (Fase 10): kegiatan + peserta + sesi + absensi
+//
+// A kegiatan is a flexible event container: a one-time event has exactly one
+// sesi, a recurring event has many sesi (one per meeting date). Peserta are
+// chosen manually per kegiatan (with a "select all" shortcut in the UI).
+// Removing a peserta does NOT delete historical absensi rows.
+// ---------------------------------------------------------------------------
+
+export const kegiatan = pgTable("kegiatan", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  namaKegiatan: text("nama_kegiatan").notNull(),
+  deskripsi: text("deskripsi"),
+  // Soft delete: a nonaktif kegiatan still appears in santri history.
+  status: kegiatanStatusEnum("status").default("aktif").notNull(),
+  // FK -> user.id (better-auth, text type).
+  dibuatOleh: text("dibuat_oleh")
+    .references(() => user.id)
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const kegiatanPeserta = pgTable(
+  "kegiatan_peserta",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    kegiatanId: uuid("kegiatan_id")
+      .references(() => kegiatan.id, { onDelete: "cascade" })
+      .notNull(),
+    santriId: uuid("santri_id")
+      .references(() => santri.id)
+      .notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique("kegiatan_peserta_kegiatan_santri_unique").on(table.kegiatanId, table.santriId),
+    index("idx_kegiatan_peserta_kegiatan_id").on(table.kegiatanId),
+    index("idx_kegiatan_peserta_santri_id").on(table.santriId),
+  ],
+);
+
+export const kegiatanSesi = pgTable(
+  "kegiatan_sesi",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    kegiatanId: uuid("kegiatan_id")
+      .references(() => kegiatan.id, { onDelete: "cascade" })
+      .notNull(),
+    tanggal: timestamp("tanggal").notNull(),
+    judul: text("judul"),
+    catatan: text("catatan"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("idx_kegiatan_sesi_kegiatan_id").on(table.kegiatanId)],
+);
+
+export const absensi = pgTable(
+  "absensi",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sesiId: uuid("sesi_id")
+      .references(() => kegiatanSesi.id, { onDelete: "cascade" })
+      .notNull(),
+    santriId: uuid("santri_id")
+      .references(() => santri.id)
+      .notNull(),
+    status: absensiStatusEnum("status").default("tanpa_keterangan").notNull(),
+    keterangan: text("keterangan"),
+    // FK -> user.id (better-auth, text type).
+    dicatatOleh: text("dicatat_oleh")
+      .references(() => user.id)
+      .notNull(),
+    tanggalDicatat: timestamp("tanggal_dicatat").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique("absensi_sesi_santri_unique").on(table.sesiId, table.santriId),
+    index("idx_absensi_sesi_id").on(table.sesiId),
+    index("idx_absensi_santri_id").on(table.santriId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Relations (for Drizzle relational queries)
 // ---------------------------------------------------------------------------
 
@@ -288,5 +392,48 @@ export const waliSantriRelations = relations(waliSantri, ({ one }) => ({
   santri: one(santri, {
     fields: [waliSantri.santriId],
     references: [santri.id],
+  }),
+}));
+
+export const kegiatanRelations = relations(kegiatan, ({ many, one }) => ({
+  peserta: many(kegiatanPeserta),
+  sesi: many(kegiatanSesi),
+  dibuatOlehUser: one(user, {
+    fields: [kegiatan.dibuatOleh],
+    references: [user.id],
+  }),
+}));
+
+export const kegiatanPesertaRelations = relations(kegiatanPeserta, ({ one }) => ({
+  kegiatan: one(kegiatan, {
+    fields: [kegiatanPeserta.kegiatanId],
+    references: [kegiatan.id],
+  }),
+  santri: one(santri, {
+    fields: [kegiatanPeserta.santriId],
+    references: [santri.id],
+  }),
+}));
+
+export const kegiatanSesiRelations = relations(kegiatanSesi, ({ one, many }) => ({
+  kegiatan: one(kegiatan, {
+    fields: [kegiatanSesi.kegiatanId],
+    references: [kegiatan.id],
+  }),
+  absensi: many(absensi),
+}));
+
+export const absensiRelations = relations(absensi, ({ one }) => ({
+  sesi: one(kegiatanSesi, {
+    fields: [absensi.sesiId],
+    references: [kegiatanSesi.id],
+  }),
+  santri: one(santri, {
+    fields: [absensi.santriId],
+    references: [santri.id],
+  }),
+  dicatatOlehUser: one(user, {
+    fields: [absensi.dicatatOleh],
+    references: [user.id],
   }),
 }));

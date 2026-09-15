@@ -142,6 +142,64 @@ Jantung sistem — nilai persentase per santri per halaman, **nilai terakhir saj
 
 Unique constraint: (`santri_id`, `halaman_id`) — satu baris per kombinasi santri+halaman, di-`UPDATE` bukan `INSERT` baru saat dinilai ulang.
 
+### `kegiatan`
+Wadah acara absensi (Fase 10). Satu kegiatan sekali jalan punya tepat 1 sesi; kegiatan rutin punya banyak sesi (satu per tanggal pertemuan).
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | uuid, PK | |
+| nama_kegiatan | text | |
+| deskripsi | text, nullable | |
+| status | enum(`aktif`, `nonaktif`), default `aktif` | soft delete — histori tetap tampil |
+| dibuat_oleh | **text**, FK → user.id | admin/ustadz pembuat |
+| created_at | timestamp | |
+| updated_at | timestamp | |
+
+### `kegiatan_peserta`
+Junction santri yang terdaftar di satu kegiatan (dipilih manual + tombol Pilih Semua di UI).
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | uuid, PK | |
+| kegiatan_id | uuid, FK → kegiatan.id (cascade) | |
+| santri_id | uuid, FK → santri.id | |
+| created_at | timestamp | |
+| updated_at | timestamp | |
+
+Unique constraint: (`kegiatan_id`, `santri_id`). Index di `kegiatan_id` & `santri_id`. Menghapus peserta **tidak** menghapus baris `absensi` historis.
+
+### `kegiatan_sesi`
+Satu tanggal pertemuan dari sebuah kegiatan. Boleh ada >1 sesi di tanggal yang sama (dibedakan lewat `judul`).
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | uuid, PK | |
+| kegiatan_id | uuid, FK → kegiatan.id (cascade) | |
+| tanggal | timestamp | |
+| judul | text, nullable | misal "Pertemuan 1" |
+| catatan | text, nullable | |
+| created_at | timestamp | |
+| updated_at | timestamp | |
+
+Index di `kegiatan_id`.
+
+### `absensi`
+Status kehadiran per santri per sesi — **satu baris per (sesi, santri)**, di-`UPDATE` saat dicatat ulang (pola sama seperti `pencapaian`).
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | uuid, PK | |
+| sesi_id | uuid, FK → kegiatan_sesi.id (cascade) | |
+| santri_id | uuid, FK → santri.id | |
+| status | enum(`hadir`, `izin`, `tanpa_keterangan`), default `tanpa_keterangan` | |
+| keterangan | text, nullable | misal "sakit" (diisi saat `izin`, opsional) |
+| dicatat_oleh | **text**, FK → user.id | admin/ustadz pencatat |
+| tanggal_dicatat | timestamp | |
+| created_at | timestamp | |
+| updated_at | timestamp | |
+
+Unique constraint: (`sesi_id`, `santri_id`). Index di `sesi_id` & `santri_id`. Validasi "santri harus peserta kegiatan" di level aplikasi. Sesi tanpa baris absensi = "belum diabsen" (bukan salah satu status).
+
 ---
 
 ## 3. Diagram Relasi (Ringkas)
@@ -155,7 +213,12 @@ user (role: admin/ustadz/wali)
   │                       │
   │                       └──< pencapaian >── halaman >── kitab
   │
-  └──< pencapaian.dinilai_oleh (sebagai ustadz)
+  ├──< pencapaian.dinilai_oleh (sebagai ustadz)
+  │
+  └──< kegiatan.dibuat_oleh
+        └──< kegiatan_peserta >── santri
+        └──< kegiatan_sesi >──< absensi >── santri
+                                    └──< absensi.dicatat_oleh (sebagai admin/ustadz)
 ```
 
 ## 4. Contoh Skema Drizzle (Potongan)

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
 
 export const metadata = {
-  title: "Dashboard | Sistem Pendataan Pencapaian Santri",
+  title: "Dashboard | e-Santri",
 };
 
 function progressVariant(progress: number): "danger" | "warning" | "success" | "accent" {

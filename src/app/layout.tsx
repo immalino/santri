@@ -10,8 +10,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Sistem Pendataan Pencapaian Santri",
-  description: "Pendataan progress pencapaian santri per kitab",
+  title: "e-Santri",
+  description: "Pendataan santri: pencapaian kitab dan absensi kegiatan",
 };
 
 export default function RootLayout({

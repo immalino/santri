@@ -2,7 +2,7 @@
 
 # CLAUDE.md
 
-Panduan kerja untuk Claude Code di project **Sistem Pendataan Pencapaian Santri**.
+Panduan kerja untuk Claude Code di project **e-Santri**.
 
 ## Dokumen Acuan
 

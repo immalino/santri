@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/permissions";
 import UserManager, { type UserAccount } from "@/components/admin/user-manager";
 
 export const metadata = {
-  title: "Kelola Ustadz | Sistem Pendataan Pencapaian Santri",
+  title: "Kelola Ustadz | e-Santri",
 };
 
 /** Ustadz admin page (tasks 4.10–4.11). */

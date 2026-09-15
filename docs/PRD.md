@@ -1,4 +1,4 @@
-# PRD - Sistem Pendataan Pencapaian Santri
+# PRD - e-Santri
 
 ## 1. Latar Belakang
 Yayasan pengajian mengadakan kajian atas 20+ kitab (Al-Qur'an, kumpulan hadits, dll). Saat ini belum ada sistem untuk mendata sejauh mana santri sudah menyelesaikan tiap halaman dari kitab-kitab tersebut. Pencapaian dinilai secara manual oleh ustadz dalam bentuk persentase (0-100%) per halaman, berdasarkan penilaian subjektif mereka atas pemahaman santri (makna & keterangan), tanpa perlu dipecah ke sub-komponen.
@@ -23,7 +23,7 @@ Semua role login menggunakan akun & password masing-masing.
 
 ## 5. Entitas Data Utama
 
-- **Santri** — nama, kelas/angkatan, status aktif, terhubung ke 1+ wali
+- **Santri** — nama, kelas/angkatan, kategori usia (pra-remaja/remaja/pra-nikah, boleh kosong), jenis kelamin (wajib untuk santri baru), status aktif, terhubung ke 1+ wali
 - **Ustadz** — nama, akun login
 - **Wali** — nama, akun login, terhubung ke 1+ santri
 - **Kitab** — nama, jumlah halaman, deskripsi, status aktif/nonaktif (CRUD oleh Admin, bisa nambah kapan saja)
@@ -68,7 +68,7 @@ Wali ──(many-to-many)── Santri ──── Pencapaian ──── Kita
 
 ## 10. Fitur Absensi (Fase 10, di luar MVP awal)
 - **Kegiatan** — nama, deskripsi, status aktif/nonaktif (CRUD oleh Admin & Ustadz; saat dibuat otomatis tercipta sesi pertama dari tanggal yang diisi)
-- **Peserta** — santri yang terdaftar per kegiatan, dipilih manual + tombol Pilih Semua; bisa tambah/hapus kapan saja; menghapus peserta tidak menghapus absensi sesi lama
+- **Peserta** — santri yang terdaftar per kegiatan, dipilih manual + tombol Pilih Semua + filter kategori usia & jenis kelamin (mis. sekali pilih semua pra-nikah perempuan); bisa tambah/hapus kapan saja; menghapus peserta tidak menghapus absensi sesi lama
 - **Sesi** — satu tanggal pertemuan per kegiatan (kegiatan sekali jalan = 1 sesi, kegiatan rutin = banyak sesi; boleh >1 sesi di tanggal sama, dibedakan lewat judul)
 - **Absensi** — per santri per sesi: `hadir` / `izin` (+keterangan opsional, misal "sakit") / `tanpa keterangan`; sesi yang belum dicatat = "belum diabsen"; dicatat ulang = update (bukan duplikat)
 - **Wali Santri** — lihat riwayat absensi anak(nya), read-only

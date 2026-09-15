@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/permissions";
 import KitabManager, { type KitabItem } from "@/components/admin/kitab-manager";
 
 export const metadata = {
-  title: "Kelola Kitab | Sistem Pendataan Pencapaian Santri",
+  title: "Kelola Kitab | e-Santri",
 };
 
 /**

@@ -5,7 +5,7 @@ import { SantriProgressDetail } from "@/components/shared/santri-progress-detail
 import { BackLink } from "@/components/shared/back-link";
 
 export const metadata = {
-  title: "Detail Santri | Sistem Pendataan Pencapaian Santri",
+  title: "Detail Santri | e-Santri",
 };
 
 /**

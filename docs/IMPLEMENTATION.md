@@ -1,6 +1,6 @@
 # IMPLEMENTATION.md — Rencana Implementasi Lengkap
 
-**Project:** Sistem Pendataan Pencapaian Santri
+**Project:** e-Santri
 **Status:** 🔄 Dalam Pengerjaan (update checklist di bawah setiap selesai mengerjakan)
 **Terakhir di-update:** 2026-09-15
 
@@ -41,6 +41,7 @@
 - [x] **Fase 8 — Daftar Santri & Detail Pencapaian (Semua Role)**
 - [x] **Fase 9 — Pengaturan Akun (Ganti Password Sendiri)**
 - [x] **Fase 10 — Absensi Kegiatan (Admin, Ustadz, Wali read-only)**
+- [x] **Fase 11 — Kategori Usia + Jenis Kelamin Santri, Filter Peserta & Rename e-Santri**
 
 ---
 
@@ -547,6 +548,30 @@
 > - **DB prod (2026-09-15):** `db:push` crash di "Pulling schema from database" — root cause terdiagnosis via instrumentasi `bin.cjs` (sementara, sudah di-revert): baris FK tabel `halaman` (`halaman_kitab_id_kitab_id_fk`, `constraint_type: "f"`) masuk ke result set CHECK-constraint tabel `kelas` → `.replace()` atas `undefined`. Ini race introspeksi konkuren drizzle-kit 0.31.10 (bug upstream masih terbuka di versi terbaru; bukan spesifik Node 24 — terjadi juga di Node 20/22). Solusi: migrasi Fase 10 diterapkan via skrip SQL satu-kali (additive: 2 enum + 4 tabel + FK/index, tanpa sentuh data lama), terverifikasi (4 tabel + 2 enum ada; data lama utuh: 9 user, 28 santri, 25 kitab, 10230 pencapaian). Skrip TEMPORER, sudah dihapus, tidak di-commit (pola sama seperti Fase 4).
 > - **`accent-(--color-primary)`** dipakai untuk checkbox di `peserta-picker` (Tailwind 4 arbitrary value) — alternatif bila bermasalah: `accent-primary`.
 > - **Admin mobile nav 5 sel** (4 item + Lainnya) memakai `grid-cols-5` — label 11px, dipadatkan.
+
+---
+
+## 10d. Fase 11 — Kategori Usia + Jenis Kelamin Santri, Filter Peserta & Rename e-Santri
+
+**Tujuan:** Setiap santri punya kategori usia (pra-remaja/remaja/pra-nikah) & jenis kelamin agar peserta pengajian bisa dipilih massal per kelompok (mis. pra-nikah perempuan) tanpa klik satu-satu. Nama aplikasi diganti **e-Santri** karena cakupan sudah melampaui pencatatan pencapaian (kitab + absensi kegiatan).
+
+### Task
+
+- [x] **11.1** Skema DB (`src/db/schema.ts`): enum `santri_usia` (`pra_remaja`/`remaja`/`pra_nikah`) & `santri_gender` (`laki_laki`/`perempuan`); kolom `kategori_usia` + `jenis_kelamin` nullable di `santri` (data lama otomatis `NULL` = "Belum diisi"). Migrasi prod via skrip SQL aditif sementara (pola Fase 10 — jangan `db:push` ke prod).
+- [x] **11.2** Validasi (`src/lib/validations.ts`): pecah `santriCreateSchema` (jenis_kelamin wajib, kategori_usia opsional) vs `santriUpdateSchema` (semua opsional agar baris lama null tetap valid); `POST /api/santri` pakai create, `PATCH /api/santri/[id]` pakai update (sekaligus memperbaiki PATCH parsial seperti toggle status yang sebelumnya wajib menyertakan nama). Label Indonesia via `KATEGORI_USIA_LABEL` / `JENIS_KELAMIN_LABEL`.
+- [x] **11.3** API + helper: `GET /api/santri` & `GET /api/ustadz/data` mengembalikan 2 kolom baru; `absensi-stats.ts` tambah tipe `KategoriUsia`/`JenisKelamin`, extend `PickerSantri`, `KegiatanPesertaItem`, `SesiPesertaAbsensi` + query `getKegiatanDetail`/`getSesiAbsensi`. Tabel `kegiatan` **tidak** diubah (keputusan user: cukup filter saat pilih peserta).
+- [x] **11.4** UI santri (`santri-manager.tsx` + `admin/santri/page.tsx`): 2 Select di modal (Usia opsional, Gender required saat create), badge usia+gender di kartu (`null` = "Belum diisi").
+- [x] **11.5** UI peserta (`peserta-picker.tsx`, dipakai `kegiatan-manager` & `kegiatan-detail-manager` admin+ustadz): dropdown filter Usia + Gender (AND dengan search teks, termasuk opsi "Belum diisi"), tombol "Pilih hasil filter (N)" + "Reset filter", sublabel baris `kelas • usia • gender`. Mapping `allSantri` di 4 halaman kegiatan admin/ustadz.
+- [x] **11.6** Seed: 5 santri contoh diberi usia+gender agar filter bisa dites lokal.
+- [x] **11.7** Rename e-Santri: `layout.tsx` (title + description "Pendataan santri: pencapaian kitab dan absensi kegiatan"), `top-bar.tsx` (brand + alt logo), `login-form.tsx` (heading + subheading), suffix `| e-Santri` di 23 metadata halaman, header docs (`CLAUDE.md`, `PRD/DESIGN/ARCHITECTURE/SCHEMA/IMPLEMENTATION`). Tidak diubah: `package.json` name, logo, isi konten PRD, route/URL, tabel DB.
+- [x] **11.8** Sinkronkan docs: `SCHEMA.md` (§2 + contoh Drizzle + enum), `PRD.md` (§5 entitas Santri + Peserta), `IMPLEMENTATION.md` (fase ini).
+
+### Definition of Done (Fase 11)
+
+- [x] Santri baru wajib pilih gender (tanpa gender → 400); usia boleh kosong; santri lama null tetap bisa diedit bertahap.
+- [x] Filter pra-nikah + perempuan → Pilih hasil filter → Simpan Peserta → reload cocok (tanpa klik satu-satu).
+- [x] Grep `Pencapaian Santri|Sistem Pendataan` di `src/` = 0; TopBar, login, tab browser tampil "e-Santri".
+- [x] `npm run lint` & `npm run build` hijau.
 
 ---
 

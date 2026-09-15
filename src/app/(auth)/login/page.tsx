@@ -4,7 +4,7 @@ import { roleHome, type Role } from "@/lib/roles";
 import LoginForm from "./login-form";
 
 export const metadata = {
-  title: "Masuk | Sistem Pendataan Pencapaian Santri",
+  title: "Masuk | e-Santri",
 };
 
 export default async function LoginPage() {

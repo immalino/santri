@@ -4,7 +4,7 @@ import LogoutButton from "@/components/shared/logout-button";
 import { Card } from "@/components/ui/card";
 
 export const metadata = {
-  title: "Pengaturan | Sistem Pendataan Pencapaian Santri",
+  title: "Pengaturan | e-Santri",
 };
 
 /**

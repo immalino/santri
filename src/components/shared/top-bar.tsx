@@ -22,13 +22,13 @@ export default function TopBar({ userName, role }: TopBarProps) {
         <div className="flex min-w-0 items-center gap-2">
           <Image
             src={logo}
-            alt="Logo Pencapaian Santri"
+            alt="Logo e-Santri"
             width={500}
             height={500}
             className="h-8 w-8 shrink-0 rounded-lg object-contain"
             priority
           />
-          <span className="truncate text-sm font-semibold text-ink">Pencapaian Santri</span>
+          <span className="truncate text-sm font-semibold text-ink">e-Santri</span>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <div className="hidden text-right sm:block">

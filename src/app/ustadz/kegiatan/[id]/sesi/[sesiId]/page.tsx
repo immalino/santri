@@ -4,7 +4,7 @@ import { AbsensiSheet } from "@/components/shared/absensi-sheet";
 import { getSesiAbsensi } from "@/lib/absensi-stats";
 
 export const metadata = {
-  title: "Input Absensi | Sistem Pendataan Pencapaian Santri",
+  title: "Input Absensi | e-Santri",
 };
 
 /** Ustadz sesi absensi input (Fase 10). */

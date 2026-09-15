@@ -5,7 +5,7 @@ import { KitabGradeSheet } from "@/components/shared/kitab-grade-sheet";
 import { BackLink } from "@/components/shared/back-link";
 
 export const metadata = {
-  title: "Nilai Kitab | Sistem Pendataan Pencapaian Santri",
+  title: "Nilai Kitab | e-Santri",
 };
 
 /**

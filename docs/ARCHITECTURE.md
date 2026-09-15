@@ -1,4 +1,4 @@
-# ARCHITECTURE - Sistem Pendataan Pencapaian Santri
+# ARCHITECTURE - e-Santri
 
 Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
 

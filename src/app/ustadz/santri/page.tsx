@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
 
 export const metadata = {
-  title: "Daftar Santri | Sistem Pendataan Pencapaian Santri",
+  title: "Daftar Santri | e-Santri",
 };
 
 /**

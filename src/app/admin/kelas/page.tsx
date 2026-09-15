@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/permissions";
 import KelasManager, { type KelasItem } from "@/components/admin/kelas-manager";
 
 export const metadata = {
-  title: "Kelola Kelas | Sistem Pendataan Pencapaian Santri",
+  title: "Kelola Kelas | e-Santri",
 };
 
 /** Kelas admin page (task 4.7). */

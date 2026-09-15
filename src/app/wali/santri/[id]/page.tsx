@@ -7,7 +7,7 @@ import { AbsensiHistory } from "@/components/shared/absensi-history";
 import { BackLink } from "@/components/shared/back-link";
 
 export const metadata = {
-  title: "Detail Santri | Sistem Pendataan Pencapaian Santri",
+  title: "Detail Santri | e-Santri",
 };
 
 /**

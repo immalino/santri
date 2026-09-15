@@ -4,7 +4,7 @@ import UserManager, { type UserAccount } from "@/components/admin/user-manager";
 import WaliSantriManager from "@/components/admin/wali-santri-manager";
 
 export const metadata = {
-  title: "Kelola Wali | Sistem Pendataan Pencapaian Santri",
+  title: "Kelola Wali | e-Santri",
 };
 
 /** Wali admin page (tasks 4.10–4.12): account management + santri relations. */

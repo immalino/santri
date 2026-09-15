@@ -1,4 +1,4 @@
-# DESIGN.md - Sistem Pendataan Pencapaian Santri
+# DESIGN.md - e-Santri
 
 Panduan desain visual & UI, mengacu pada `PRD.md` dan `ARCHITECTURE.md`.
 

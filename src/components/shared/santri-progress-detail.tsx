@@ -61,7 +61,7 @@ function KitabEditCard({ kitab, href }: { kitab: WaliKitabProgress; href: string
   return (
     <Link
       href={href}
-      className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-background"
+      className="group flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-background active:border-primary active:bg-background"
     >
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">

@@ -166,7 +166,7 @@ export function SantriSummary({
           </div>
           <Link
             href={pencapaianHref}
-            className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline"
+            className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline active:opacity-60"
           >
             Lihat detail
             <ChevronRight className="h-4 w-4" aria-hidden />
@@ -213,7 +213,7 @@ export function SantriSummary({
           </div>
           <Link
             href={kehadiranHref}
-            className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline"
+            className="inline-flex shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline active:opacity-60"
           >
             Lihat detail
             <ChevronRight className="h-4 w-4" aria-hidden />

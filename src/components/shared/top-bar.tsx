@@ -40,7 +40,7 @@ export default function TopBar({ userName, role }: TopBarProps) {
             href={`/${role}/pengaturan`}
             aria-label="Pengaturan akun"
             title="Pengaturan akun"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-ink-secondary transition-colors hover:bg-background hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-ink-secondary transition-colors hover:bg-background hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:bg-background active:opacity-60"
           >
             <Settings className="h-5 w-5" aria-hidden />
           </Link>

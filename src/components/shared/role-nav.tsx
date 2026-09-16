@@ -81,7 +81,7 @@ function DesktopLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-[44px] items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors ${
+      className={`flex min-h-[44px] items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors active:opacity-60 ${
         active ? "border-primary text-primary" : "border-transparent text-ink-secondary hover:text-ink"
       }`}
     >
@@ -163,7 +163,7 @@ function MobileLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
+      className={`flex min-h-[60px] flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors active:opacity-60 ${
         active ? "text-primary" : "text-ink-secondary"
       }`}
     >
@@ -187,7 +187,7 @@ function MobileMoreLink({
     <Link
       href={item.href}
       onClick={onNavigate}
-      className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors ${
+      className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors active:opacity-60 ${
         active ? "bg-primary/10 text-primary" : "text-ink hover:bg-background"
       }`}
     >

@@ -35,7 +35,7 @@ export default async function UstadzSantriPage() {
             <Link
               key={s.id}
               href={`/ustadz/santri/${s.id}`}
-              className="group rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-background"
+              className="group rounded-2xl border border-border bg-surface p-5 shadow-sm transition-colors hover:border-primary/40 hover:bg-background active:border-primary active:bg-background"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-start gap-3">

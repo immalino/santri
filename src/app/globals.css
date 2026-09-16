@@ -75,3 +75,19 @@
     }
   }
 }
+
+/* Indeterminate top navigation progress bar
+   (src/components/shared/navigation-progress.tsx). The segment is 40% wide
+   (w-2/5): it slides from fully off-screen left to fully off-screen right. */
+@theme {
+  --animate-nav-progress: nav-progress 1.1s ease-in-out infinite;
+
+  @keyframes nav-progress {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(250%);
+    }
+  }
+}

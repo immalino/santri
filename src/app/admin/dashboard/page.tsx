@@ -64,7 +64,7 @@ export default async function AdminDashboardPage() {
               <Link
                 key={s.santriId}
                 href={`/admin/santri/${s.santriId}`}
-                className="block rounded-2xl border border-border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-background"
+                className="block rounded-2xl border border-border bg-surface p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-background active:border-primary active:bg-background"
               >
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <div className="min-w-0">

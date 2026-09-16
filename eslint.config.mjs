@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Isolated git worktrees (build artifacts + a full source copy).
+    ".worktrees/**",
   ]),
 ]);
 

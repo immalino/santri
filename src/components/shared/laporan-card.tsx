@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Check, Copy } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,10 @@ export function LaporanCard({
   }, [template, sesi]);
 
   async function handleCopy() {
-    if (!text) return;
+    if (!text) {
+      toast.error("Laporan kosong — tidak ada yang bisa disalin.");
+      return;
+    }
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -68,7 +72,7 @@ export function LaporanCard({
 
       {templates.length === 0 || !template ? (
         <p className="text-sm text-ink-secondary">
-          Belum ada template. <a className="font-medium text-primary underline" href={detailHref}>Buat template di detail kegiatan.</a>
+          Belum ada template. <Link className="font-medium text-primary underline" href={detailHref}>Buat template di detail kegiatan.</Link>
         </p>
       ) : (
         <>

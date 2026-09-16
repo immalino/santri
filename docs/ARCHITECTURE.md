@@ -54,7 +54,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
       /santri             (+ /[id], /[id]/progress, /[id]/absensi)
       /users              (+ /[id])
       /wali-santri
-      /kegiatan           (+ /[id], /[id]/peserta, /[id]/sesi, /[id]/sesi/[sesiId], .../absensi, /[id]/template, /[id]/template/[templateId])
+      /kegiatan           (+ /[id], /[id]/peserta, /[id]/sesi, /[id]/sesi/[sesiId], .../absensi, /[id]/template, /[id]/template/[templateId]) (admin/ustadz)
       /pencapaian         (+ /riwayat)
       /ustadz/data
       /admin/dashboard
@@ -74,6 +74,8 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
      /admin, /wali
   proxy.ts                 -> Next 16 proxy (pengganti middleware.ts)
 ```
+
+Catatan: preview laporan (`LaporanCard`) mencerminkan absensi yang sudah tersimpan — setelah simpan absensi, halaman disegarkan (`router.refresh()`) agar data sesi terbaru dipakai.
 
 ## 4. Skema Database (Ringkas)
 

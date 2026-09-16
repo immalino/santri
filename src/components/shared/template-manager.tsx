@@ -12,6 +12,11 @@ import { Dialog } from "@/components/ui/dialog";
 import { VARIABLE_CATALOG, findUnknownVars } from "@/lib/laporan-template";
 import type { KegiatanTemplateItem } from "@/lib/absensi-stats";
 
+const updatedAtFormatter = new Intl.DateTimeFormat("id-ID", {
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
 /**
  * Kelola template laporan teks satu kegiatan (N template per kegiatan).
  * Editor memakai Dialog existing + contekan variabel klik-untuk-sisip.
@@ -34,6 +39,10 @@ export function TemplateManager({
   const isiRef = useRef<HTMLTextAreaElement>(null);
 
   const unknown = findUnknownVars(isi);
+
+  const editingItem = editingId ? (items.find((t) => t.id === editingId) ?? null) : null;
+  const dirty =
+    editingItem === null || nama.trim() !== editingItem.nama || isi.trim() !== editingItem.isi;
 
   async function refresh() {
     setItems(await api<KegiatanTemplateItem[]>(`/api/kegiatan/${kegiatanId}/template`));
@@ -73,6 +82,7 @@ export function TemplateManager({
   async function handleSave(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
+    let saved = false;
     try {
       const payload = { nama: nama.trim(), isi: isi.trim() };
       await toast.promise(
@@ -91,11 +101,15 @@ export function TemplateManager({
           error: (err) => (err instanceof Error ? err.message : "Gagal menyimpan template."),
         },
       );
+      saved = true;
       await refresh();
-      setShowForm(false);
     } catch {
-      // Error sudah ditampilkan lewat toast.
+      if (saved) {
+        toast.error("Template tersimpan, tetapi gagal memuat ulang daftar.");
+      }
+      // Kegagalan simpan sudah ditampilkan lewat toast.promise.
     } finally {
+      if (saved) setShowForm(false);
       setSaving(false);
     }
   }
@@ -143,6 +157,9 @@ export function TemplateManager({
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-ink">{t.nama}</p>
                   <p className="line-clamp-2 text-sm text-ink-secondary">{t.isi}</p>
+                  <p className="mt-1 text-xs text-ink-secondary">
+                    Diubah {updatedAtFormatter.format(new Date(t.updatedAt))}
+                  </p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -172,7 +189,7 @@ export function TemplateManager({
         title={editingId ? "Edit Template" : "Tambah Template"}
         footer={
           <div className="flex gap-3">
-            <Button type="submit" form="form-template" disabled={saving} className="flex-1">
+            <Button type="submit" form="form-template" disabled={saving || !dirty} className="flex-1">
               {saving ? "Menyimpan..." : "Simpan"}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setShowForm(false)}>

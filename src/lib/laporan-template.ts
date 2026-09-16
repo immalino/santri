@@ -80,13 +80,14 @@ function sortNama(list: LaporanPeserta[]): LaporanPeserta[] {
   return [...list].sort((a, b) => a.nama.localeCompare(b.nama, "id"));
 }
 
-function formatNama(p: LaporanPeserta): string {
+function formatNama(p: LaporanPeserta, withKeterangan: boolean): string {
   const ket = p.keterangan?.trim();
-  return ket ? `${p.nama} (${ket})` : p.nama;
+  return withKeterangan && p.status === "izin" && ket ? `${p.nama} (${ket})` : p.nama;
 }
 
-function numbered(list: LaporanPeserta[]): string[] {
-  return sortNama(list).map((p, i) => `${i + 1}. ${formatNama(p)}`);
+function numbered(list: LaporanPeserta[], opts?: { withKeterangan?: boolean }): string[] {
+  const withKeterangan = opts?.withKeterangan ?? false;
+  return sortNama(list).map((p, i) => `${i + 1}. ${formatNama(p, withKeterangan)}`);
 }
 
 function pct(n: number, total: number): string {
@@ -127,9 +128,9 @@ export function buildLaporanContext(sesi: LaporanSesiInput, totalSesi: number): 
 
   const lists: Record<string, string[]> = {
     daftar_hadir: numbered(hadir),
-    daftar_izin: numbered(izin),
+    daftar_izin: numbered(izin, { withKeterangan: true }),
     daftar_tanpa_keterangan: numbered(tanpaKet),
-    daftar_tidak_hadir: numbered(tidakHadir),
+    daftar_tidak_hadir: numbered(tidakHadir, { withKeterangan: true }),
     daftar_belum_diabsen: numbered(belum),
     daftar_hadir_laki_laki: numbered(hadirBy(null, "laki_laki")),
     daftar_hadir_perempuan: numbered(hadirBy(null, "perempuan")),
@@ -169,8 +170,8 @@ function valueOf(name: string, ctx: LaporanContext): string | null {
     case "persen_belum_diabsen": return pct(ctx.counts.jumlah_belum_diabsen, ctx.totalPeserta);
     default: break;
   }
-  if (name in ctx.counts) return String(ctx.counts[name]);
-  if (name in ctx.lists) {
+  if (Object.hasOwn(ctx.counts, name)) return String(ctx.counts[name]);
+  if (Object.hasOwn(ctx.lists, name)) {
     const l = ctx.lists[name];
     return l.length > 0 ? l.join("\n") : "(tidak ada)";
   }

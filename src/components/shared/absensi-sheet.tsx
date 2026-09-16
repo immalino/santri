@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
@@ -40,6 +41,7 @@ export function AbsensiSheet({
   laporanSlot?: ReactNode;
 }) {
   const toast = useToast();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [baseline, setBaseline] = useState(() =>
     initialData.peserta.map((p) => ({ santriId: p.santriId, status: p.status, keterangan: p.keterangan ?? "" })),
@@ -150,6 +152,9 @@ export function AbsensiSheet({
           keterangan: rows[p.santriId]?.keterangan ?? "",
         })),
       );
+      // Segarkan data server agar preview laporan memakai status tersimpan.
+      // (Live preview untuk perubahan yang belum disimpan di luar cakupan.)
+      router.refresh();
     } catch {
       // Error sudah ditampilkan lewat toast.
     } finally {

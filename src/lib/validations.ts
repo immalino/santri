@@ -169,6 +169,36 @@ export const absensiInputSchema = z.object({
   nilai: z.array(absensiItemSchema).min(1, "Minimal satu santri diabsen."),
 });
 
+// --- Template laporan (per kegiatan, render per sesi) ------------------------
+
+const templateNamaSchema = z
+  .string()
+  .trim()
+  .min(1, "Nama template wajib diisi.")
+  .max(120, "Nama template maksimal 120 karakter.");
+
+const templateIsiSchema = z
+  .string()
+  .trim()
+  .min(1, "Isi template wajib diisi.")
+  .max(10000, "Isi template maksimal 10000 karakter.");
+
+/** Create: nama + isi wajib. */
+export const templateCreateSchema = z.object({
+  nama: templateNamaSchema,
+  isi: templateIsiSchema,
+});
+
+/** Partial update: minimal satu field. */
+export const templateUpdateSchema = z
+  .object({
+    nama: templateNamaSchema.optional(),
+    isi: templateIsiSchema.optional(),
+  })
+  .refine((d) => d.nama !== undefined || d.isi !== undefined, {
+    message: "Minimal satu field diisi.",
+  });
+
 // --- Self-service password change -------------------------------------------
 
 /** Self password change: verify current password + matching confirmation. */

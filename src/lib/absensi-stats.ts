@@ -14,7 +14,6 @@ import {
   kegiatan,
   kegiatanPeserta,
   kegiatanSesi,
-  kegiatanTemplate,
   santri,
 } from "@/db/schema";
 
@@ -261,7 +260,7 @@ export async function getSesiAbsensi(sesiId: string): Promise<SesiAbsensiData | 
   });
   const bySantri = new Map(recorded.map((r) => [r.santriId, r]));
 
-  const totalSesi = (await getKegiatanDetail(sesi.kegiatanId))?.sesi.length ?? 0;
+  const totalSesi = detail?.sesi.length ?? 0;
 
   return {
     sesiId: sesi.id,

@@ -202,6 +202,20 @@ Status kehadiran per santri per sesi — **satu baris per (sesi, santri)**, di-`
 
 Unique constraint: (`sesi_id`, `santri_id`). Index di `sesi_id` & `santri_id`. Validasi "santri harus peserta kegiatan" di level aplikasi. Sesi tanpa baris absensi = "belum diabsen" (bukan salah satu status).
 
+### `kegiatan_template`
+Template laporan teks per kegiatan (fase laporan, 2026-09-16). Satu kegiatan boleh punya N template (mis. "Laporan sesi", "Laporan mingguan"); semua template dirender dalam konteks **satu sesi yang dibuka**.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | uuid, PK | |
+| kegiatan_id | uuid, FK → kegiatan.id (cascade) | |
+| nama | text | nama template, 1–120 karakter (trim) |
+| isi | text | teks bebas dengan variabel `{{nama_variabel}}`, 1–10.000 karakter (trim) |
+| created_at | timestamp | |
+| updated_at | timestamp | |
+
+Index di `kegiatan_id`. Menghapus kegiatan ikut menghapus template (cascade); menambah/menghapus peserta atau sesi **tidak** menyentuh template. Tanpa unique constraint (nama template boleh sama).
+
 ---
 
 ## 3. Diagram Relasi (Ringkas)
@@ -218,9 +232,10 @@ user (role: admin/ustadz/wali)
   ├──< pencapaian.dinilai_oleh (sebagai ustadz)
   │
   └──< kegiatan.dibuat_oleh
-        └──< kegiatan_peserta >── santri
-        └──< kegiatan_sesi >──< absensi >── santri
-                                    └──< absensi.dicatat_oleh (sebagai admin/ustadz)
+        ├──< kegiatan_peserta >── santri
+        ├──< kegiatan_sesi >──< absensi >── santri
+        │                         └──< absensi.dicatat_oleh (sebagai admin/ustadz)
+        └──< kegiatan_template
 ```
 
 ## 4. Contoh Skema Drizzle (Potongan)

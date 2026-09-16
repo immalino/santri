@@ -54,7 +54,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
       /santri             (+ /[id], /[id]/progress, /[id]/absensi)
       /users              (+ /[id])
       /wali-santri
-      /kegiatan           (+ /[id], /[id]/peserta, /[id]/sesi, /[id]/sesi/[sesiId], .../absensi)
+      /kegiatan           (+ /[id], /[id]/peserta, /[id]/sesi, /[id]/sesi/[sesiId], .../absensi, /[id]/template, /[id]/template/[templateId])
       /pencapaian         (+ /riwayat)
       /ustadz/data
       /admin/dashboard
@@ -67,9 +67,10 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
      permissions.ts         -> requireRole / requireApiRole
      roles.ts               -> Role, roleHome, roleLabel (tanpa import server)
      absensi-stats.ts       -> agregasi kegiatan/sesi/absensi (shared API + pages)
+     laporan-template.ts    -> katalog 39 variabel + render murni {{var}} (client-safe)
    /components
      /ui                   -> Button, Card, Input, PasswordInput, Select, Badge, ProgressBar, Skeleton, ThemeToggle
-     /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink, ChangePasswordForm, KegiatanManager, KegiatanDetailManager, PesertaPicker, AbsensiSheet, AbsensiHistory
+     /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink, ChangePasswordForm, KegiatanManager, KegiatanDetailManager, PesertaPicker, AbsensiSheet, AbsensiHistory, TemplateManager, LaporanCard
      /admin, /wali
   proxy.ts                 -> Next 16 proxy (pengganti middleware.ts)
 ```
@@ -89,6 +90,7 @@ kegiatan         (id, nama, deskripsi, status[aktif|nonaktif], dibuat_oleh(users
 kegiatan_peserta (kegiatan_id, santri_id)      -- santri terdaftar per kegiatan
 kegiatan_sesi    (id, kegiatan_id, tanggal, judul, catatan) -- satu baris per pertemuan
 absensi          (id, sesi_id, santri_id, status[hadir|izin|tanpa_keterangan], keterangan, dicatat_oleh(users.id), tanggal)
+kegiatan_template (id, kegiatan_id, nama, isi) -- N template laporan teks per kegiatan
 ```
 
 Catatan implementasi:
@@ -97,6 +99,7 @@ Catatan implementasi:
 - `kitab` yang nonaktif tetap tampil di progress santri (soft delete via kolom `status`, bukan `DELETE`). `kegiatan` memakai pola soft delete yang sama.
 - Saat jumlah halaman kitab ditambah, sistem cukup `INSERT` baris `halaman` baru tanpa menyentuh baris lama — data `pencapaian` yang sudah ada tetap aman.
 - Saat kegiatan dibuat, sesi pertama otomatis dibuat dari tanggal yang diisi — kegiatan sekali jalan cukup 1 sesi, kegiatan rutin tambah sesi lagi dari halaman detail. Menghapus peserta tidak menghapus baris `absensi` historis.
+- `kegiatan_template` (template laporan teks) dimiliki per kegiatan: hapus kegiatan meng-cascade template; tambah/hapus peserta atau sesi tidak menyentuh template. Render `{{var}}` murni di browser dari data sesi yang sudah dimuat server.
 
 ## 5. Autentikasi & Otorisasi
 

@@ -2,7 +2,7 @@
 
 **Project:** e-Santri
 **Status:** 🔄 Dalam Pengerjaan (update checklist di bawah setiap selesai mengerjakan)
-**Terakhir di-update:** 2026-09-15
+**Terakhir di-update:** 2026-09-16
 
 > Plan ini ditulis seperti arahan **senior developer → junior developer**. Idenya: kamu (junior, manusia atau AI) mengerjakan step-by-step sesuai urutan, centang checklist ketika selesai, dan jangan lompat ke fase berikutnya sebelum fase sebelumnya **Definition of Done**-nya terpenuhi.
 
@@ -42,6 +42,7 @@
 - [x] **Fase 9 — Pengaturan Akun (Ganti Password Sendiri)**
 - [x] **Fase 10 — Absensi Kegiatan (Admin, Ustadz, Wali read-only)**
 - [x] **Fase 11 — Kategori Usia + Jenis Kelamin Santri, Filter Peserta & Rename e-Santri**
+- [x] **Fase 12 — Template Laporan Teks per Sesi (Admin & Ustadz)**
 
 ---
 
@@ -572,6 +573,36 @@
 - [x] Filter pra-nikah + perempuan → Pilih hasil filter → Simpan Peserta → reload cocok (tanpa klik satu-satu).
 - [x] Grep `Pencapaian Santri|Sistem Pendataan` di `src/` = 0; TopBar, login, tab browser tampil "e-Santri".
 - [x] `npm run lint` & `npm run build` hijau.
+
+---
+
+## 10e. Fase 12 — Template Laporan Teks per Sesi (Admin & Ustadz)
+
+**Tujuan:** Dari tiap sesi absensi bisa dihasilkan **laporan teks** (untuk ditempel ke WA/grup) memakai **template bebas tulis** yang disimpan **per kegiatan** (N template per kegiatan: per sesi, mingguan, dll) dengan variabel `{{...}}` dari katalog tetap. Wali tidak tersentuh.
+
+### Task
+
+- [x] **12.1** Skema DB (`src/db/schema.ts`): tabel `kegiatan_template` (`id` uuid PK, `kegiatan_id` uuid FK → `kegiatan.id` **cascade** + index, `nama` text, `isi` text, `created_at`/`updated_at`; tanpa unique DB) + relasi Drizzle. Migrasi via `db:push` (pola Fase 10).
+- [x] **12.2** Validasi (`src/lib/validations.ts`): `templateCreateSchema` (nama 1–120 trim, isi 1–10.000 trim) & `templateUpdateSchema` (parsial, minimal satu field).
+- [x] **12.3** Mesin variabel (`src/lib/laporan-template.ts`, murni/client-safe): `VARIABLE_CATALOG` (**39 variabel tetap**), `buildLaporanContext`, `renderTemplate` → `{ text, unknownVars }`, `findUnknownVars`. Aturan: `{{var}}` (spasi dalam kurung ditoleransi); persen penyebut `total_peserta` (`Math.round` + `%`, 0 peserta → `0%`); daftar bernomor `1. Nama` alfabetis locale `id`, entri izin menambah ` (keterangan)`, kosong → `(tidak ada)`; variabel tak dikenal dibiarkan apa adanya + dilaporkan untuk peringatan.
+- [x] **12.4** Helper (`src/lib/absensi-stats.ts`): `getKegiatanTemplates(kegiatanId)` + tipe `KegiatanTemplateItem` (`updatedAt` ISO); `getSesiAbsensi`/`SesiAbsensiData` diperluas dengan `totalSesi` (jumlah sesi kegiatan) agar konteks laporan lengkap tanpa query tambahan.
+- [x] **12.5** API (`requireApiRole(["admin","ustadz"])` — wali 403): `GET/POST /api/kegiatan/[id]/template` (list urut `created_at`; 404 bila kegiatan tidak ada), `PATCH/DELETE /api/kegiatan/[id]/template/[templateId]` (404 bila template bukan milik kegiatan; 400 validasi zod).
+- [x] **12.6** UI: `TemplateManager` (client) sebagai seksi "Template Laporan" di `KegiatanDetailManager` (admin & ustadz) — daftar + Tambah/Edit/Hapus, editor `Dialog` existing (Nama + Textarea + contekan variabel klik-sisip di kursor + peringatan typo). `LaporanCard` (client) di halaman sesi admin & ustadz — dropdown template → preview `<pre>` scroll (`whitespace-pre-wrap`) → Salin (`navigator.clipboard`, sukses toast; gagal → toast + teks terseleksi untuk salin manual); empty state + link ke detail kegiatan.
+- [x] **12.7** Sinkronkan docs: `SCHEMA.md` (tabel + diagram), `ARCHITECTURE.md` (§3 route/komponen + §4), `IMPLEMENTATION.md` (fase ini).
+
+### Definition of Done (Fase 12)
+
+- [x] Admin/ustadz bisa buat/edit/hapus template per kegiatan; dropdown sesi ikut berubah setelah refresh.
+- [x] Preview sesi benar (nama, hari/tanggal Indonesia, `1. Nama (sakit)`, `(tidak ada)` untuk list kosong, `{{typo}}` + peringatan).
+- [x] Salin cocok dengan preview; wali `GET /api/kegiatan/<id>/template` → 403.
+- [x] `npx tsc --noEmit` & `npm run lint` hijau.
+- [ ] Uji browser manual (buat template → preview → salin → edit/hapus → wali 403 → mobile) — **PENDING FOR HUMAN** (butuh login session; langkah ada di brief Task 8).
+
+> 📝 **Catatan Fase 12:**
+> - **Batasan v1 (non-goals):** tanpa agregat lintas sesi/mingguan otomatis, tanpa unduh/PDF, tanpa template khusus per sesi (semua template milik kegiatan), daftar selalu alfabetis, penyebut persen selalu total peserta terdaftar.
+> - **Katalog 39 variabel:** kegiatan & sesi (5: `nama_kegiatan`, `judul_sesi`, `catatan_sesi`, `total_peserta`, `total_sesi`), tanggal (3: `hari`, `tanggal`, `tanggal_panjang`), jumlah umum (5: hadir/izin/tanpa_keterangan/tidak_hadir/belum_diabsen), jumlah hadir berfilter (11: gender & kategori usia), persen (5), daftar (10: hadir/izin/tanpa_keterangan/tidak_hadir/belum_diabsen + hadir per gender/usia).
+> - **Render di browser** dari data sesi yang sudah dimuat server (ganti dropdown tidak fetch ulang). Status `null` (belum diabsen) dihitung terpisah, bukan bagian hadir/izin/tanpa_keterangan.
+> - **Cascade:** hapus kegiatan ikut hapus template; hapus peserta/sesi tidak menyentuh template. Tanpa API agregat baru — semua dari `getSesiAbsensi` + `getKegiatanTemplates`.
 
 ---
 

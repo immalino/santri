@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Pencil, Plus, Power, School, Settings2, TrendingUp, UserRound } from "lucide-react";
+import { Eye, Pencil, Plus, Power, School, Settings2, UserRound } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -310,8 +310,8 @@ export default function SantriManager({
 
               <div className="flex flex-wrap gap-2">
                 <ButtonLink href={`/admin/santri/${item.id}`} variant="secondary" size="sm">
-                  <TrendingUp className="h-4 w-4" aria-hidden />
-                  Lihat Progress
+                  <Eye className="h-4 w-4" aria-hidden />
+                  Lihat Detail
                 </ButtonLink>
                 <Button type="button" variant="secondary" size="sm" onClick={() => openEdit(item)}>
                   <Pencil className="h-4 w-4" aria-hidden />

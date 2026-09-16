@@ -78,6 +78,42 @@ export function getKehadiranRingkasan(absensi: SantriAbsensiKegiatan[]): Kehadir
   return { hadir, izin, tanpaKeterangan, belumDiabsen, totalSesi, totalDiabsen, persenHadir };
 }
 
+/** Distribusi jumlah kitab per rentang rata-rata (preview kartu Pencapaian Materi). */
+export interface DistribusiPencapaian {
+  /** 0% — termasuk kitab yang belum dinilai sama sekali. */
+  nol: number;
+  /** 1–39%. */
+  rendah: number;
+  /** 40–79%. */
+  sedang: number;
+  /** 80–99%. */
+  tinggi: number;
+  /** 100%. */
+  sempurna: number;
+}
+
+export function getDistribusiPencapaian(data: SantriProgressData): DistribusiPencapaian {
+  const distribusi: DistribusiPencapaian = { nol: 0, rendah: 0, sedang: 0, tinggi: 0, sempurna: 0 };
+  for (const k of data.kitab) {
+    // `rataRata` sudah integer (Math.round di lib), 0 bila belum dinilai.
+    if (k.rataRata >= 100) distribusi.sempurna += 1;
+    else if (k.rataRata >= 80) distribusi.tinggi += 1;
+    else if (k.rataRata >= 40) distribusi.sedang += 1;
+    else if (k.rataRata >= 1) distribusi.rendah += 1;
+    else distribusi.nol += 1;
+  }
+  return distribusi;
+}
+
+/** Urutan band kiri → kanan: 0%, 1–39, 40–79, 80–99, 100%. */
+const DISTRIBUSI_BANDS = [
+  { key: "nol", label: "0%", dotStyle: { background: "var(--ink-secondary)", opacity: 0.35 } },
+  { key: "rendah", label: "1–39%", dotStyle: { background: "var(--danger)" } },
+  { key: "sedang", label: "40–79%", dotStyle: { background: "var(--warning)" } },
+  { key: "tinggi", label: "80–99%", dotStyle: { background: "var(--success)", opacity: 0.6 } },
+  { key: "sempurna", label: "100%", dotStyle: { background: "var(--success)" } },
+] as const;
+
 function SorotanRow({
   label,
   kitab,
@@ -117,14 +153,10 @@ export function SantriSummary({
 }) {
   const sorotan = getPencapaianSorotan(data);
   const ringkasan = getKehadiranRingkasan(absensi);
-  const showTertinggiTerendah =
-    sorotan.tertinggi !== null &&
-    sorotan.terendah !== null &&
-    sorotan.tertinggi.kitabId !== sorotan.terendah.kitabId;
-  const showPerluPerhatian =
-    sorotan.perluPerhatian !== null &&
-    sorotan.perluPerhatian.kitabId !== sorotan.tertinggi?.kitabId &&
-    sorotan.perluPerhatian.kitabId !== sorotan.terendah?.kitabId;
+  const distribusi = getDistribusiPencapaian(data);
+  const totalKitabDistribusi =
+    distribusi.nol + distribusi.rendah + distribusi.sedang + distribusi.tinggi + distribusi.sempurna;
+  const showPerluPerhatian = sorotan.perluPerhatian !== null;
 
   return (
     <div className="space-y-6">
@@ -173,26 +205,42 @@ export function SantriSummary({
           </Link>
         </div>
 
-        <div className="mt-3 divide-y divide-border border-t border-border">
-          {!data.hasPenilaian ? (
-            <p className="py-3 text-sm text-ink-secondary">
-              Belum ada penilaian untuk <span className="font-medium text-ink">{data.nama}</span>.
-              Nilai akan otomatis tampil setelah ustadz menginput.
-            </p>
-          ) : sorotan.tertinggi === null ? (
-            <p className="py-3 text-sm text-ink-secondary">Belum ada kitab.</p>
-          ) : !showTertinggiTerendah ? (
-            <SorotanRow label="Satu-satunya kitab" kitab={sorotan.tertinggi} />
-          ) : (
-            <>
-              <SorotanRow label="Tertinggi" kitab={sorotan.tertinggi} />
-              <SorotanRow label="Terendah" kitab={sorotan.terendah!} />
-              {showPerluPerhatian && sorotan.perluPerhatian !== null && (
+        {/* Grid jumlah kitab per rentang rata-rata. */}
+        {totalKitabDistribusi === 0 ? (
+          <p className="mt-3 border-t border-border pt-3 text-sm text-ink-secondary">
+            Belum ada kitab.
+          </p>
+        ) : !data.hasPenilaian ? (
+          <p className="mt-3 border-t border-border pt-3 text-sm text-ink-secondary">
+            Belum ada penilaian untuk <span className="font-medium text-ink">{data.nama}</span>.
+            Nilai akan otomatis tampil setelah ustadz menginput.
+          </p>
+        ) : (
+          <>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              {DISTRIBUSI_BANDS.map((b) => (
+                <div
+                  key={b.key}
+                  className="rounded-xl border border-border bg-background/60 p-3"
+                >
+                  <p className="inline-flex items-center gap-1.5 text-xs text-ink-secondary">
+                    <span aria-hidden className="h-2 w-2 rounded-full" style={b.dotStyle} />
+                    {b.label}
+                  </p>
+                  <p className="mt-1 text-center text-2xl font-bold tabular-nums text-ink">
+                    {distribusi[b.key]}
+                  </p>
+                  <p className="text-center text-[11px] text-ink-secondary">kitab</p>
+                </div>
+              ))}
+            </div>
+            {showPerluPerhatian && sorotan.perluPerhatian !== null && (
+              <div className="mt-3 border-t border-border">
                 <SorotanRow label="Perlu perhatian (< 40%)" kitab={sorotan.perluPerhatian} />
-              )}
-            </>
-          )}
-        </div>
+              </div>
+            )}
+          </>
+        )}
       </Card>
 
       {/* Ringkasan kehadiran. */}

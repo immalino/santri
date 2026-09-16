@@ -1,7 +1,16 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Eye, Pencil, Plus, Power, School, Settings2, UserRound } from "lucide-react";
+import { useMemo, useState, type FormEvent } from "react";
+import {
+  Eye,
+  ListChecks,
+  Pencil,
+  Plus,
+  Power,
+  School,
+  Settings2,
+  UserRound,
+} from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -11,6 +20,14 @@ import { Select } from "@/components/ui/select";
 import { Field } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
+import { SantriListControls } from "@/components/shared/santri-list-controls";
+import {
+  DEFAULT_SANTRI_LIST_STATE,
+  NONE_VALUE,
+  filterAndSortSantri,
+  uniqueKelasNames,
+  type SantriListState,
+} from "@/lib/santri-filter";
 
 /** Santri row shared by the server page and this manager. */
 export interface SantriItem {
@@ -37,6 +54,21 @@ interface SantriForm {
   jenisKelamin: string;
 }
 
+/** Bulk edit selections; "" means "jangan ubah field ini". */
+interface BulkForm {
+  kelasId: string;
+  statusAktif: string;
+  kategoriUsia: string;
+  jenisKelamin: string;
+}
+
+const EMPTY_BULK_FORM: BulkForm = {
+  kelasId: "",
+  statusAktif: "",
+  kategoriUsia: "",
+  jenisKelamin: "",
+};
+
 const KATEGORI_USIA_OPTIONS = [
   { value: "pra_remaja", label: "Pra-remaja" },
   { value: "remaja", label: "Remaja" },
@@ -59,6 +91,8 @@ function jenisKelaminLabel(value: SantriItem["jenisKelamin"]): string {
 /**
  * Santri management (tasks 4.8–4.9). Create/edit via the admin API; delete is
  * a soft deactivate (`status_aktif: false`) so records keep their relations.
+ * The list can be searched/filtered/sorted and admin can bulk-edit several
+ * santri at once (kelas, status, kategori usia, jenis kelamin).
  */
 export default function SantriManager({
   initialSantris,
@@ -79,6 +113,19 @@ export default function SantriManager({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const [listState, setListState] = useState<SantriListState>(DEFAULT_SANTRI_LIST_STATE);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [showBulk, setShowBulk] = useState(false);
+  const [bulkForm, setBulkForm] = useState<BulkForm>(EMPTY_BULK_FORM);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const kelasOptions = useMemo(() => uniqueKelasNames(santris), [santris]);
+  const visibleSantris = useMemo(
+    () => filterAndSortSantri(santris, listState),
+    [santris, listState],
+  );
+  const selectedSet = useMemo(() => new Set(selected), [selected]);
 
   async function refresh() {
     setSantris(await api<SantriItem[]>("/api/santri"));
@@ -166,6 +213,74 @@ export default function SantriManager({
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  /** Add every santri matching the current filter to the selection. */
+  function selectAllVisible() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const item of visibleSantris) next.add(item.id);
+      return [...next];
+    });
+  }
+
+  function clearSelection() {
+    setSelected([]);
+  }
+
+  function openBulk() {
+    setBulkForm(EMPTY_BULK_FORM);
+    setShowBulk(true);
+  }
+
+  function cancelBulk() {
+    setShowBulk(false);
+  }
+
+  async function handleBulkSave(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const payload: Record<string, unknown> = { ids: selected };
+    if (bulkForm.kelasId !== "") {
+      payload.kelasId = bulkForm.kelasId === NONE_VALUE ? null : bulkForm.kelasId;
+    }
+    if (bulkForm.statusAktif !== "") {
+      payload.statusAktif = bulkForm.statusAktif === "aktif";
+    }
+    if (bulkForm.kategoriUsia !== "") {
+      payload.kategoriUsia = bulkForm.kategoriUsia === NONE_VALUE ? null : bulkForm.kategoriUsia;
+    }
+    if (bulkForm.jenisKelamin !== "") {
+      payload.jenisKelamin =
+        bulkForm.jenisKelamin === NONE_VALUE ? null : bulkForm.jenisKelamin;
+    }
+
+    if (Object.keys(payload).length <= 1) {
+      toast.error("Pilih minimal satu field untuk diubah.");
+      return;
+    }
+
+    setBulkLoading(true);
+    try {
+      await toast.promise(
+        api("/api/santri/bulk", { method: "PATCH", body: JSON.stringify(payload) }),
+        {
+          loading: "Menyimpan perubahan massal...",
+          success: `${selected.length} santri berhasil diperbarui.`,
+          error: (err) => (err instanceof Error ? err.message : "Gagal memperbarui santri."),
+        },
+      );
+      await refresh();
+      clearSelection();
+      setShowBulk(false);
+    } catch {
+      // Error sudah ditampilkan lewat toast.
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -186,6 +301,15 @@ export default function SantriManager({
           </Button>
         </div>
       </div>
+
+      <SantriListControls
+        state={listState}
+        onChange={setListState}
+        kelasOptions={kelasOptions}
+        sortOptions={["nama", "kelas", "usia"]}
+        showUsia
+        showGender
+      />
 
       {/* Create/edit form lives in a modal (DESIGN.md §5) so it stays reachable
           without scrolling back to the top of a long santri list. */}
@@ -278,53 +402,185 @@ export default function SantriManager({
         </form>
       </Dialog>
 
+      {/* Bulk edit dialog — each field defaults to "Tidak diubah". */}
+      <Dialog
+        open={showBulk}
+        onClose={cancelBulk}
+        title={`Edit Massal (${selected.length} santri)`}
+        footer={
+          <div className="flex gap-3">
+            <Button type="submit" form="form-bulk-santri" disabled={bulkLoading} className="flex-1">
+              {bulkLoading ? "Menyimpan..." : "Simpan Perubahan"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={cancelBulk}>
+              Batal
+            </Button>
+          </div>
+        }
+      >
+        <form id="form-bulk-santri" onSubmit={handleBulkSave} className="space-y-4">
+          <p className="rounded-lg bg-background px-3 py-2 text-sm text-ink-secondary">
+            Hanya field yang tidak dibiarkan “Tidak diubah” yang akan diterapkan ke{" "}
+            {selected.length} santri terpilih.
+          </p>
+
+          <Field label="Kelas" htmlFor="bulk-kelas">
+            <Select
+              id="bulk-kelas"
+              value={bulkForm.kelasId}
+              onChange={(e) => setBulkForm((f) => ({ ...f, kelasId: e.target.value }))}
+            >
+              <option value="">Tidak diubah</option>
+              <option value={NONE_VALUE}>Tanpa kelas</option>
+              {initialKelas.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.namaKelas}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="Status" htmlFor="bulk-status">
+            <Select
+              id="bulk-status"
+              value={bulkForm.statusAktif}
+              onChange={(e) => setBulkForm((f) => ({ ...f, statusAktif: e.target.value }))}
+            >
+              <option value="">Tidak diubah</option>
+              <option value="aktif">Aktif</option>
+              <option value="nonaktif">Nonaktif</option>
+            </Select>
+          </Field>
+
+          <Field label="Kategori Usia" htmlFor="bulk-usia">
+            <Select
+              id="bulk-usia"
+              value={bulkForm.kategoriUsia}
+              onChange={(e) => setBulkForm((f) => ({ ...f, kategoriUsia: e.target.value }))}
+            >
+              <option value="">Tidak diubah</option>
+              <option value={NONE_VALUE}>Belum diisi</option>
+              {KATEGORI_USIA_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <Field label="Jenis Kelamin" htmlFor="bulk-gender">
+            <Select
+              id="bulk-gender"
+              value={bulkForm.jenisKelamin}
+              onChange={(e) => setBulkForm((f) => ({ ...f, jenisKelamin: e.target.value }))}
+            >
+              <option value="">Tidak diubah</option>
+              <option value={NONE_VALUE}>Belum diisi</option>
+              {JENIS_KELAMIN_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </form>
+      </Dialog>
+
       {santris.length === 0 ? (
         <Card className="p-6 text-center text-sm text-ink-secondary">
           Belum ada santri. Klik “Tambah Santri” untuk menambah.
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {santris.map((item) => (
-            <Card key={item.id} className="flex flex-col gap-3 p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <UserRound className="h-5 w-5" aria-hidden />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-ink">{item.nama}</p>
-                    <p className="flex items-center gap-1 text-sm text-ink-secondary">
-                      <School className="h-3.5 w-3.5" aria-hidden />
-                      {item.kelasNama ?? "Tanpa kelas"}
-                    </p>
-                    <p className="mt-1 flex flex-wrap gap-1">
-                      <Badge variant="secondary">{kategoriUsiaLabel(item.kategoriUsia)}</Badge>
-                      <Badge variant="secondary">{jenisKelaminLabel(item.jenisKelamin)}</Badge>
-                    </p>
-                  </div>
-                </div>
-                <Badge variant={item.statusAktif ? "success" : "secondary"}>
-                  {item.statusAktif ? "Aktif" : "Nonaktif"}
-                </Badge>
-              </div>
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-ink-secondary" aria-live="polite">
+              Menampilkan {visibleSantris.length} dari {santris.length} santri
+              {selected.length > 0 ? ` • ${selected.length} dipilih` : ""}.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {visibleSantris.length > 0 && (
+                <Button type="button" variant="secondary" size="sm" onClick={selectAllVisible}>
+                  Pilih semua hasil filter
+                </Button>
+              )}
+              {selected.length > 0 && (
+                <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
+                  Bersihkan pilihan
+                </Button>
+              )}
+              {selected.length > 0 && (
+                <Button type="button" size="sm" onClick={openBulk}>
+                  <ListChecks className="h-4 w-4" aria-hidden />
+                  Edit Massal ({selected.length})
+                </Button>
+              )}
+            </div>
+          </div>
 
-              <div className="flex flex-wrap gap-2">
-                <ButtonLink href={`/admin/santri/${item.id}`} variant="secondary" size="sm">
-                  <Eye className="h-4 w-4" aria-hidden />
-                  Lihat Detail
-                </ButtonLink>
-                <Button type="button" variant="secondary" size="sm" onClick={() => openEdit(item)}>
-                  <Pencil className="h-4 w-4" aria-hidden />
-                  Edit
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={() => toggleStatus(item)}>
-                  <Power className="h-4 w-4" aria-hidden />
-                  {item.statusAktif ? "Nonaktifkan" : "Aktifkan"}
-                </Button>
-              </div>
+          {visibleSantris.length === 0 ? (
+            <Card className="p-6 text-center text-sm text-ink-secondary">
+              Tidak ada santri yang cocok dengan filter.
             </Card>
-          ))}
-        </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {visibleSantris.map((item) => {
+                const checked = selectedSet.has(item.id);
+                return (
+                  <Card
+                    key={item.id}
+                    className={`flex flex-col gap-3 p-5 ${
+                      checked ? "border-primary bg-primary/5" : ""
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSelect(item.id)}
+                          aria-label={`Pilih ${item.nama}`}
+                          className="mt-2 h-5 w-5 shrink-0 rounded border-border accent-(--color-primary)"
+                        />
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <UserRound className="h-5 w-5" aria-hidden />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-ink">{item.nama}</p>
+                          <p className="flex items-center gap-1 text-sm text-ink-secondary">
+                            <School className="h-3.5 w-3.5" aria-hidden />
+                            {item.kelasNama ?? "Tanpa kelas"}
+                          </p>
+                          <p className="mt-1 flex flex-wrap gap-1">
+                            <Badge variant="secondary">{kategoriUsiaLabel(item.kategoriUsia)}</Badge>
+                            <Badge variant="secondary">{jenisKelaminLabel(item.jenisKelamin)}</Badge>
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={item.statusAktif ? "success" : "secondary"}>
+                        {item.statusAktif ? "Aktif" : "Nonaktif"}
+                      </Badge>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <ButtonLink href={`/admin/santri/${item.id}`} variant="secondary" size="sm">
+                        <Eye className="h-4 w-4" aria-hidden />
+                        Lihat Detail
+                      </ButtonLink>
+                      <Button type="button" variant="secondary" size="sm" onClick={() => openEdit(item)}>
+                        <Pencil className="h-4 w-4" aria-hidden />
+                        Edit
+                      </Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => toggleStatus(item)}>
+                        <Power className="h-4 w-4" aria-hidden />
+                        {item.statusAktif ? "Nonaktifkan" : "Aktifkan"}
+                      </Button>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

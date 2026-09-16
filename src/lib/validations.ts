@@ -78,6 +78,24 @@ export const santriUpdateSchema = z.object({
   jenisKelamin: jenisKelaminSchema.nullable().optional(),
 });
 
+/** Bulk update: apply the same change to many santri; at least one field set. */
+export const santriBulkUpdateSchema = z
+  .object({
+    ids: z.array(z.string().uuid("Santri tidak valid.")).min(1, "Pilih minimal satu santri."),
+    kelasId: z.string().uuid("Kelas tidak valid.").nullable().optional(),
+    statusAktif: z.boolean().optional(),
+    kategoriUsia: kategoriUsiaSchema.nullable().optional(),
+    jenisKelamin: jenisKelaminSchema.nullable().optional(),
+  })
+  .refine(
+    (data) =>
+      data.kelasId !== undefined ||
+      data.statusAktif !== undefined ||
+      data.kategoriUsia !== undefined ||
+      data.jenisKelamin !== undefined,
+    { message: "Pilih minimal satu perubahan." },
+  );
+
 /** Back-compat alias (create-shaped); prefer the split schemas above. */
 export const santriInputSchema = santriCreateSchema;
 

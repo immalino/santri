@@ -26,7 +26,7 @@ export default async function AdminKitabDetailPage({
 
   return (
     <div className="space-y-6">
-      <BackLink href={`/admin/santri/${id}`}>Kembali ke detail santri</BackLink>
+      <BackLink href={`/admin/santri/${id}/pencapaian`}>Kembali ke detail pencapaian</BackLink>
       <KitabGradeSheet
         santriId={id}
         santriNama={data.nama}

@@ -2,20 +2,19 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/permissions";
 import { getSantriProgressData, getWaliSantris } from "@/lib/santri-progress";
 import { getSantriAbsensi } from "@/lib/absensi-stats";
-import { SantriSummary } from "@/components/shared/santri-summary";
+import { AbsensiHistory } from "@/components/shared/absensi-history";
 import { BackLink } from "@/components/shared/back-link";
 
 export const metadata = {
-  title: "Detail Santri | e-Santri",
+  title: "Kehadiran Santri | e-Santri",
 };
 
 /**
- * Wali santri summary (read-only): header + ringkasan pencapaian (sorotan) +
- * ringkasan kehadiran. Detail penuh pindah ke `[id]/pencapaian` dan
- * `[id]/kehadiran`. Ownership is enforced — a wali may only view children
- * linked to their account; anything else 404s.
+ * Wali detail kehadiran (read-only): riwayat absensi penuh per kegiatan per
+ * sesi. Ownership is enforced — a wali may only view children linked to their
+ * account; anything else 404s.
  */
-export default async function WaliSantriDetailPage({
+export default async function WaliSantriKehadiranPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -34,13 +33,8 @@ export default async function WaliSantriDetailPage({
 
   return (
     <div className="space-y-6">
-      <BackLink href="/wali/santri" />
-      <SantriSummary
-        data={data}
-        absensi={absensi}
-        pencapaianHref={`/wali/santri/${id}/pencapaian`}
-        kehadiranHref={`/wali/santri/${id}/kehadiran`}
-      />
+      <BackLink href={`/wali/santri/${id}`}>Kembali ke ringkasan santri</BackLink>
+      <AbsensiHistory data={absensi} />
     </div>
   );
 }

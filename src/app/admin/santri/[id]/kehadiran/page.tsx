@@ -2,18 +2,18 @@ import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/permissions";
 import { getSantriProgressData } from "@/lib/santri-progress";
 import { getSantriAbsensi } from "@/lib/absensi-stats";
-import { SantriSummary } from "@/components/shared/santri-summary";
+import { AbsensiHistory } from "@/components/shared/absensi-history";
 import { BackLink } from "@/components/shared/back-link";
 
 export const metadata = {
-  title: "Detail Santri | e-Santri",
+  title: "Kehadiran Santri | e-Santri",
 };
 
 /**
- * Admin santri summary: header + ringkasan pencapaian (sorotan) + ringkasan
- * kehadiran. Detail penuh pindah ke `[id]/pencapaian` dan `[id]/kehadiran`.
+ * Admin detail kehadiran: riwayat absensi penuh per kegiatan per sesi
+ * (read-only).
  */
-export default async function AdminSantriDetailPage({
+export default async function AdminSantriKehadiranPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -28,13 +28,8 @@ export default async function AdminSantriDetailPage({
 
   return (
     <div className="space-y-6">
-      <BackLink href="/admin/santri">Kembali ke daftar santri</BackLink>
-      <SantriSummary
-        data={data}
-        absensi={absensi}
-        pencapaianHref={`/admin/santri/${id}/pencapaian`}
-        kehadiranHref={`/admin/santri/${id}/kehadiran`}
-      />
+      <BackLink href={`/admin/santri/${id}`}>Kembali ke ringkasan santri</BackLink>
+      <AbsensiHistory data={absensi} />
     </div>
   );
 }

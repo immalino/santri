@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { CalendarDays, ClipboardCheck, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -53,9 +53,13 @@ export function KegiatanDetailManager({
     initialDetail.peserta.map((p) => p.santriId),
   );
   const [savingPeserta, setSavingPeserta] = useState(false);
+  const [showPesertaDialog, setShowPesertaDialog] = useState(false);
   const pesertaDirty =
     pesertaIds.length !== detail.peserta.length ||
     pesertaIds.some((id) => !detail.peserta.some((p) => p.santriId === id));
+
+  const previewNames = detail.peserta.slice(0, 5).map((p) => p.nama);
+  const remainingPeserta = detail.peserta.length - previewNames.length;
 
   const [showSesiForm, setShowSesiForm] = useState(false);
   const [editingSesiId, setEditingSesiId] = useState<string | null>(null);
@@ -88,11 +92,22 @@ export function KegiatanDetailManager({
         },
       );
       await refresh();
+      setShowPesertaDialog(false);
     } catch {
       // Error sudah ditampilkan lewat toast.
     } finally {
       setSavingPeserta(false);
     }
+  }
+
+  function openPesertaDialog() {
+    setPesertaIds(detail.peserta.map((p) => p.santriId));
+    setShowPesertaDialog(true);
+  }
+
+  function closePesertaDialog() {
+    setShowPesertaDialog(false);
+    setPesertaIds(detail.peserta.map((p) => p.santriId));
   }
 
   function openCreateSesi() {
@@ -193,17 +208,27 @@ export function KegiatanDetailManager({
       <section aria-label="Peserta kegiatan" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-ink">Peserta</h2>
-          <Button
-            type="button"
-            size="sm"
-            disabled={!pesertaDirty || savingPeserta}
-            onClick={handleSavePeserta}
-          >
-            {savingPeserta ? "Menyimpan..." : "Simpan Peserta"}
+          <Button type="button" size="sm" onClick={openPesertaDialog}>
+            <Users className="h-4 w-4" aria-hidden />
+            Kelola Peserta
           </Button>
         </div>
         <Card className="p-5">
-          <PesertaPicker allSantri={allSantri} selected={pesertaIds} onChange={setPesertaIds} />
+          {detail.peserta.length === 0 ? (
+            <p className="text-sm text-ink-secondary">
+              Belum ada peserta. Klik Kelola Peserta untuk menambahkan.
+            </p>
+          ) : (
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-ink">
+                {detail.peserta.length} santri terdaftar
+              </p>
+              <p className="text-sm text-ink-secondary">
+                {previewNames.join(", ")}
+                {remainingPeserta > 0 ? ` +${remainingPeserta} lainnya` : ""}
+              </p>
+            </div>
+          )}
         </Card>
       </section>
 
@@ -266,6 +291,29 @@ export function KegiatanDetailManager({
           </div>
         )}
       </section>
+
+      <Dialog
+        open={showPesertaDialog}
+        onClose={closePesertaDialog}
+        title={`Kelola Peserta — ${detail.namaKegiatan}`}
+        footer={
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              onClick={handleSavePeserta}
+              disabled={!pesertaDirty || savingPeserta}
+              className="flex-1"
+            >
+              {savingPeserta ? "Menyimpan..." : "Simpan Peserta"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={closePesertaDialog}>
+              Batal
+            </Button>
+          </div>
+        }
+      >
+        <PesertaPicker allSantri={allSantri} selected={pesertaIds} onChange={setPesertaIds} />
+      </Dialog>
 
       <Dialog
         open={showSesiForm}

@@ -328,6 +328,24 @@ export const absensi = pgTable(
   ],
 );
 
+export const kegiatanTemplate = pgTable(
+  "kegiatan_template",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    kegiatanId: uuid("kegiatan_id")
+      .references(() => kegiatan.id, { onDelete: "cascade" })
+      .notNull(),
+    nama: text("nama").notNull(),
+    isi: text("isi").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("idx_kegiatan_template_kegiatan_id").on(table.kegiatanId)],
+);
+
 // ---------------------------------------------------------------------------
 // Relations (for Drizzle relational queries)
 // ---------------------------------------------------------------------------
@@ -407,6 +425,7 @@ export const waliSantriRelations = relations(waliSantri, ({ one }) => ({
 export const kegiatanRelations = relations(kegiatan, ({ many, one }) => ({
   peserta: many(kegiatanPeserta),
   sesi: many(kegiatanSesi),
+  template: many(kegiatanTemplate),
   dibuatOlehUser: one(user, {
     fields: [kegiatan.dibuatOleh],
     references: [user.id],
@@ -430,6 +449,13 @@ export const kegiatanSesiRelations = relations(kegiatanSesi, ({ one, many }) => 
     references: [kegiatan.id],
   }),
   absensi: many(absensi),
+}));
+
+export const kegiatanTemplateRelations = relations(kegiatanTemplate, ({ one }) => ({
+  kegiatan: one(kegiatan, {
+    fields: [kegiatanTemplate.kegiatanId],
+    references: [kegiatan.id],
+  }),
 }));
 
 export const absensiRelations = relations(absensi, ({ one }) => ({

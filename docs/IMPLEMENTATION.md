@@ -43,6 +43,7 @@
 - [x] **Fase 10 — Absensi Kegiatan (Admin, Ustadz, Wali read-only)**
 - [x] **Fase 11 — Kategori Usia + Jenis Kelamin Santri, Filter Peserta & Rename e-Santri**
 - [x] **Fase 12 — Template Laporan Teks per Sesi (Admin & Ustadz)**
+- [x] **Tambahan (pasca Fase 12) — Filter/Sort Daftar Santri + Edit Massal (Admin)**
 
 ---
 
@@ -603,6 +604,33 @@
 > - **Katalog 39 variabel:** kegiatan & sesi (5: `nama_kegiatan`, `judul_sesi`, `catatan_sesi`, `total_peserta`, `total_sesi`), tanggal (3: `hari`, `tanggal`, `tanggal_panjang`), jumlah umum (5: hadir/izin/tanpa_keterangan/tidak_hadir/belum_diabsen), jumlah hadir berfilter (11: gender & kategori usia), persen (5), daftar (10: hadir/izin/tanpa_keterangan/tidak_hadir/belum_diabsen + hadir per gender/usia).
 > - **Render di browser** dari data sesi yang sudah dimuat server (ganti dropdown tidak fetch ulang). Status `null` (belum diabsen) dihitung terpisah, bukan bagian hadir/izin/tanpa_keterangan.
 > - **Cascade:** hapus kegiatan ikut hapus template; hapus peserta/sesi tidak menyentuh template. Tanpa API agregat baru — semua dari `getSesiAbsensi` + `getKegiatanTemplates`.
+
+---
+
+## 10f. Tambahan (Pasca Fase 12) — Filter/Sort Daftar Santri + Edit Massal (Admin)
+
+**Tujuan:** Daftar santri bisa dicari, difilter, dan diurutkan di semua role; admin dapat mengubah beberapa santri sekaligus (kelas, status aktif, kategori usia, jenis kelamin) tanpa membuka form satu per satu. Nama tidak disertakan di bulk karena tidak cocok untuk massal (keputusan user).
+
+### Task
+
+- [x] **T1** Util murni/client-safe (`src/lib/santri-filter.ts`): `filterSantri` (query nama/kelas + kelas/status/usia/gender, sentinel `NONE_VALUE` = "tanpa kelas"/"belum diisi"), `sortSantri` (nama/kelas/usia/progress + arah, tie-break nama asc, nilai kosong di urutan akhir), `filterAndSortSantri`, `uniqueKelasNames`, `DEFAULT_SANTRI_LIST_STATE`.
+- [x] **T2** Kontrol bersama (`src/components/shared/santri-list-controls.tsx`, client): input cari + Select filter kelas/status (+usia/gender opsional) + Select sort + tombol arah + "Reset filter". Controlled oleh parent (`SantriListState`).
+- [x] **T3** Validasi (`src/lib/validations.ts`): `santriBulkUpdateSchema` — `ids` (min 1 UUID), `kelasId`/`statusAktif`/`kategoriUsia`/`jenisKelamin` opsional (boleh `null`), refine minimal satu field diisi.
+- [x] **T4** API (`src/app/api/santri/bulk/route.ts`): `PATCH` admin-only, update via `inArray(santri.id, ids)` hanya field yang dikirim, balas `{ updated: n }`. Route statis `/api/santri/bulk` diprioritaskan di atas dinamis `[id]`.
+- [x] **T5** Admin (`src/components/admin/santri-manager.tsx`): filter (nama/kelas/status/usia/gender) + sort (nama/kelas/usia); checkbox per kartu + "Pilih semua hasil filter" / "Bersihkan pilihan"; dialog "Edit Massal (N)" dengan tiap field default "Tidak diubah" (opsi mengosongkan: Tanpa kelas / Belum diisi) → PATCH bulk → refresh.
+- [x] **T6** Ustadz & wali: komponen bersama `src/components/shared/santri-progress-list.tsx` (client) menggantikan markup duplikat di `app/ustadz/santri/page.tsx` & `app/wali/santri/page.tsx`; filter (nama/kelas/status) + sort (nama/kelas/progress). Bulk edit hanya admin.
+
+### Definition of Done (Tambahan)
+
+- [x] Logika filter/sort lolos uji kasus (query nama & kelas, kelas "tanpa kelas", status, usia/gender "belum diisi", sort nama/progress/usia/kelas asc-desc, nilai null di urutan akhir).
+- [x] Admin bisa pilih beberapa santri → Edit Massal → hanya field yang diubah yang diterapkan; pilihan dibersihkan setelah simpan.
+- [x] Ustadz & wali bisa cari/filter/sort tanpa akses bulk.
+- [x] `npm run lint` & `npm run build` hijau; `PATCH /api/santri/bulk` terdaftar.
+
+> 📝 **Catatan Tambahan:**
+> - **Filter client-side** dari data yang sudah dimuat server (daftar santri relatif kecil) — tanpa API list baru.
+> - **Bulk non-goals:** nama tidak bisa diubah massal; tidak ada undo/riwayat perubahan massal.
+> - **`NONE_VALUE` (`__none__`)** dipakai untuk opsi "Tanpa kelas"/"Belum diisi"; filter kelas memakai **nama kelas** (bukan id) agar bisa dipakai bersama halaman progress ustadz/wali yang tidak punya `kelasId`.
 
 ---
 

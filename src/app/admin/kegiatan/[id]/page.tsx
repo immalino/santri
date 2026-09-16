@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { requireRole } from "@/lib/permissions";
 import { KegiatanDetailManager } from "@/components/shared/kegiatan-detail-manager";
-import { getKegiatanDetail } from "@/lib/absensi-stats";
+import { getKegiatanDetail, getKegiatanTemplates } from "@/lib/absensi-stats";
 import type { PickerSantri } from "@/components/shared/peserta-picker";
 
 export const metadata = {
@@ -18,13 +18,14 @@ export default async function AdminKegiatanDetailPage({
   await requireRole(["admin"]);
   const { id } = await params;
 
-  const [detail, santris] = await Promise.all([
+  const [detail, santris, templates] = await Promise.all([
     getKegiatanDetail(id),
     db.query.santri.findMany({
       columns: { id: true, nama: true, statusAktif: true, kategoriUsia: true, jenisKelamin: true },
       with: { kelas: { columns: { namaKelas: true } } },
       orderBy: (s, { asc }) => [asc(s.nama)],
     }),
+    getKegiatanTemplates(id),
   ]);
   if (!detail) notFound();
 
@@ -38,6 +39,6 @@ export default async function AdminKegiatanDetailPage({
   }));
 
   return (
-    <KegiatanDetailManager initialDetail={detail} allSantri={allSantri} basePath="/admin/kegiatan" />
+    <KegiatanDetailManager initialDetail={detail} allSantri={allSantri} basePath="/admin/kegiatan" initialTemplates={templates} />
   );
 }

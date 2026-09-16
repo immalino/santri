@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { BackLink } from "@/components/shared/back-link";
 import { PesertaPicker, type PickerSantri } from "@/components/shared/peserta-picker";
-import type { KegiatanDetail } from "@/lib/absensi-stats";
+import { TemplateManager } from "@/components/shared/template-manager";
+import type { KegiatanDetail, KegiatanTemplateItem } from "@/lib/absensi-stats";
 
 function dateStr(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
@@ -41,10 +42,12 @@ export function KegiatanDetailManager({
   initialDetail,
   allSantri,
   basePath,
+  initialTemplates,
 }: {
   initialDetail: KegiatanDetail;
   allSantri: PickerSantri[];
   basePath: string;
+  initialTemplates: KegiatanTemplateItem[];
 }) {
   const toast = useToast();
   const [detail, setDetail] = useState<KegiatanDetail>(initialDetail);
@@ -291,6 +294,8 @@ export function KegiatanDetailManager({
           </div>
         )}
       </section>
+
+      <TemplateManager kegiatanId={detail.id} initialTemplates={initialTemplates} />
 
       <Dialog
         open={showPesertaDialog}

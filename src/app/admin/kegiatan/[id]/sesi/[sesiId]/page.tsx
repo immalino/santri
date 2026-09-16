@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/permissions";
 import { AbsensiSheet } from "@/components/shared/absensi-sheet";
-import { getSesiAbsensi } from "@/lib/absensi-stats";
+import { LaporanCard } from "@/components/shared/laporan-card";
+import { getKegiatanTemplates, getSesiAbsensi } from "@/lib/absensi-stats";
 
 export const metadata = {
   title: "Input Absensi | e-Santri",
@@ -16,7 +17,10 @@ export default async function AdminSesiAbsensiPage({
   await requireRole(["admin"]);
   const { id, sesiId } = await params;
 
-  const data = await getSesiAbsensi(sesiId);
+  const [data, templates] = await Promise.all([
+    getSesiAbsensi(sesiId),
+    getKegiatanTemplates(id),
+  ]);
   if (!data || data.kegiatanId !== id) notFound();
 
   return (
@@ -24,6 +28,7 @@ export default async function AdminSesiAbsensiPage({
       initialData={data}
       postUrl={`/api/kegiatan/${id}/sesi/${sesiId}/absensi`}
       backHref={`/admin/kegiatan/${id}`}
+      laporanSlot={<LaporanCard sesi={data} templates={templates} detailHref={`/admin/kegiatan/${id}`} />}
     />
   );
 }

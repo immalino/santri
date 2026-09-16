@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Search } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useToast } from "@/components/ui/toast";
@@ -32,10 +32,12 @@ export function AbsensiSheet({
   initialData,
   postUrl,
   backHref,
+  laporanSlot,
 }: {
   initialData: SesiAbsensiData;
   postUrl: string;
   backHref: string;
+  laporanSlot?: ReactNode;
 }) {
   const toast = useToast();
   const [query, setQuery] = useState("");
@@ -175,6 +177,8 @@ export function AbsensiSheet({
           {changed.length > 0 ? ` • ${changed.length} perubahan` : ""}.
         </p>
       </Card>
+
+      {laporanSlot}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative w-full sm:min-w-0 sm:flex-1">

@@ -23,7 +23,7 @@ interface KitabOption {
 
 /**
  * Ustadz grading page (tasks 5.2–5.4): pick a santri + kitab, then grade pages
- * on a color-filled grid. The grid + bulk-set editing lives in the shared
+ * with the quick-grade list. The list + autosave editing lives in the shared
  * KitabGradeSheet, remounted per selection via `key` so its state always
  * matches the currently chosen santri+kitab pair.
  */
@@ -76,7 +76,7 @@ export default function UstadzInputPage() {
       <div>
         <h1 className="text-2xl font-semibold text-ink">Input Nilai</h1>
         <p className="mt-1 text-sm text-ink-secondary">
-          Pilih santri dan kitab, lalu isi persentase tiap halaman (0–100).
+          Pilih santri dan kitab, lalu ketuk preset di tiap halaman — tersimpan otomatis.
         </p>
       </div>
 

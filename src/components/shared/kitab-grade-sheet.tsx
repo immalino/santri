@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpenText, Check, Save, SlidersHorizontal } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BookOpenText } from "lucide-react";
 import { api } from "@/lib/api-client";
-import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog } from "@/components/ui/dialog";
-import { PageGrid } from "@/components/ustadz/page-grid";
+import { Badge } from "@/components/ui/badge";
 
 interface PageScore {
   halamanId: string;
@@ -16,76 +14,31 @@ interface PageScore {
 }
 
 const PRESETS = [0, 25, 50, 75, 100];
+/** Idle time after the last tap before queued changes are sent. */
+const AUTOSAVE_DELAY_MS = 900;
 
-/** Bulk-set controls ("N halaman dipilih / Bersihkan / preset / 0-100 / Terapkan"). */
-function BulkBar({
-  count,
-  value,
-  onValueChange,
-  onApply,
-  onClear,
-}: {
-  count: number;
-  value: string;
-  onValueChange: (v: string) => void;
-  onApply: (v: number) => void;
-  onClear: () => void;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-background/60 p-2.5">
-      <div className="flex flex-wrap items-center gap-2 p-2.5">
-        <span className="px-1 text-sm font-semibold text-ink">{count} halaman dipilih</span>
-        <Button type="button" size="sm" variant="ghost" onClick={onClear}>
-          Bersihkan
-        </Button>
-        <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
-        {PRESETS.map((p) => (
-          <Button key={p} type="button" size="sm" variant="secondary" onClick={() => onApply(p)}>
-            {p}%
-          </Button>
-        ))}
-        <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden />
-        <div className="flex items-center gap-1.5">
-          <input
-            type="number"
-            min={0}
-            max={100}
-            value={value}
-            onChange={(e) => onValueChange(e.target.value)}
-            placeholder="0-100"
-            aria-label="Nilai untuk halaman terpilih"
-            className="w-24 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-secondary/70 focus:border-primary focus:ring-2 focus:ring-primary/20"
-          />
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => {
-              const v = Number(value);
-              if (Number.isFinite(v)) onApply(v);
-            }}
-          >
-            Terapkan
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+/** Badge color for a page's current score. */
+function pageVariant(persentase: number | null): "success" | "warning" | "danger" | "secondary" {
+  if (persentase === null) return "secondary";
+  if (persentase >= 75) return "success";
+  if (persentase >= 40) return "warning";
+  return "danger";
 }
 
 /**
- * Grading sheet for one santri + kitab (Fase 8). Extracted verbatim from the
- * ustadz "Input Nilai" page so the detail pages can reuse the exact grid +
- * bulk-set editing flow. Existing values are preloaded from the API unless
- * `initialPages` is provided (then those are used and no fetch runs).
+ * Quick grading sheet for one santri + kitab ("Nilai Cepat"). Each page is a
+ * row with its preset buttons inline: one tap sets the value, changes
+ * autosave after a short idle delay, and focus advances to the next page so
+ * sequential per-page grading (the dominant pattern) needs one tap per page.
+ *
+ * Data semantics are unchanged: only pages whose value differs from the last
+ * saved one are sent (upsert per `(santri, halaman)`), untouched pages stay
+ * `null`/ungraded.
  *
  * The parent remounts this component per selection via `key`, so all state is
  * scoped to one santri+kitab pair.
- *
- * Layout (deviasi keputusan desain — bulk-set dalam modal): the page grid stays
- * inline (task 5.2) with an added jump-to-page aid for kitab with many pages.
- * The bulk-set bar lives in a modal opened by a sticky, always-reachable
- * button, so a 1000-page kitab no longer requires scrolling to the bottom of
- * the grid to set a value.
  */
 export function KitabGradeSheet({
   santriId,
@@ -101,36 +54,34 @@ export function KitabGradeSheet({
   /** Preloaded per-page values (from `getSantriProgressData`); skips the fetch. */
   initialPages?: PageScore[];
 }) {
-  const toast = useToast();
   const [pages, setPages] = useState<PageScore[]>(initialPages ?? []);
   const [values, setValues] = useState<Record<string, number>>(() =>
     Object.fromEntries((initialPages ?? []).map((h) => [h.halamanId, h.persentase ?? 0])),
   );
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkValue, setBulkValue] = useState("");
-  const [saving, setSaving] = useState(false);
   // Without preloaded data the sheet always fetches, so start in the loading
   // state instead of flashing "no pages" before the fetch kicks in.
   const [loadingSheet, setLoadingSheet] = useState(!initialPages);
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(
     null,
   );
-  const [open, setOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [jumpValue, setJumpValue] = useState("");
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const jumpTimer = useRef<number | null>(null);
+  const saveTimer = useRef<number | null>(null);
 
-  // Clear any pending jump-highlight timer on unmount.
+  // Clear any pending timers on unmount.
   useEffect(
     () => () => {
       if (jumpTimer.current) window.clearTimeout(jumpTimer.current);
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
     },
     [],
   );
 
-  // Preload the sheet from the API when no initial data was passed (task 5.3
-  // pattern). The work is deferred into a setTimeout so no setState runs
-  // synchronously in the effect body (react-hooks/set-state-in-effect).
+  // Preload the sheet from the API when no initial data was passed. The work
+  // is deferred into a setTimeout so no setState runs synchronously in the
+  // effect body (react-hooks/set-state-in-effect).
   useEffect(() => {
     if (initialPages) return;
     let cancelled = false;
@@ -176,40 +127,117 @@ export function KitabGradeSheet({
     [pages, values],
   );
 
-  function togglePage(halamanId: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(halamanId)) next.delete(halamanId);
-      else next.add(halamanId);
-      return next;
+  // Latest state mirror so the debounced saver always sends fresh data without
+  // re-creating timers on every render. Assigned in an effect (not during
+  // render) to satisfy react-hooks/refs.
+  const latest = useRef({ pages, values, santriId, kitabId });
+  useEffect(() => {
+    latest.current = { pages, values, santriId, kitabId };
+  });
+
+  const doSave = useCallback(async () => {
+    const { pages: p, values: v, santriId: sid, kitabId: kid } = latest.current;
+    const changed = p.filter((pg) => (v[pg.halamanId] ?? 0) !== (pg.persentase ?? 0));
+    if (changed.length === 0 || !sid || !kid || p.length === 0) return;
+    setSaveStatus("saving");
+    try {
+      await api("/api/pencapaian", {
+        method: "POST",
+        body: JSON.stringify({
+          santriId: sid,
+          kitabId: kid,
+          nilai: changed.map((pg) => ({
+            halamanId: pg.halamanId,
+            persentase: v[pg.halamanId] ?? 0,
+          })),
+        }),
+      });
+      // Adopt the new baseline ONLY for pages that were actually sent AND
+      // haven't been retapped mid-flight. Pages changed during the flight keep
+      // their old baseline, so the autosave effect re-queues them.
+      const sentValues = v;
+      setPages((prev) =>
+        prev.map((pg) => {
+          const sent = sentValues[pg.halamanId] ?? 0;
+          return latest.current.values[pg.halamanId] === sent
+            ? { ...pg, persentase: sent }
+            : pg;
+        }),
+      );
+      setMessage(null);
+      setSaveStatus("saved");
+    } catch (err) {
+      setMessage({
+        kind: "error",
+        text: err instanceof Error ? err.message : "Gagal menyimpan otomatis.",
+      });
+      setSaveStatus("error");
+    }
+  }, []);
+
+  // Autosave: whenever there are unsent changes, wait for a short idle period
+  // then send them. No manual save button needed.
+  useEffect(() => {
+    if (loadingSheet || changedPages.length === 0) return;
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      void doSave();
+    }, AUTOSAVE_DELAY_MS);
+    return () => {
+      if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    };
+  }, [changedPages, loadingSheet, doSave]);
+
+  // "Ada perubahan..." is derived from unsent changes (not a separate state)
+  // so no setState runs inside the autosave effect above.
+  const saveLabel =
+    saveStatus === "saving"
+      ? "Menyimpan..."
+      : saveStatus === "error"
+        ? "Gagal menyimpan"
+        : changedPages.length > 0
+          ? "Ada perubahan..."
+          : saveStatus === "saved"
+            ? "Tersimpan ✓"
+            : "Belum ada perubahan";
+
+  /** Set one page's value; by default focus advances to the next page. */
+  function applyPreset(halamanId: string, preset: number, advance = true) {
+    const clamped = Math.max(0, Math.min(100, Math.round(preset)));
+    setValues((prev) => (prev[halamanId] === clamped ? prev : { ...prev, [halamanId]: clamped }));
+    if (!advance) return;
+    requestAnimationFrame(() => {
+      const idx = latest.current.pages.findIndex((p) => p.halamanId === halamanId);
+      const next = latest.current.pages[idx + 1];
+      if (!next) return;
+      const el = document.getElementById(`grade-${next.halamanId}-${clamped}`);
+      el?.scrollIntoView({ block: "nearest" });
+      (el as HTMLElement | null)?.focus({ preventScroll: true });
     });
   }
 
-  function paintSelect(halamanId: string) {
-    setSelected((prev) => {
-      if (prev.has(halamanId)) return prev;
-      const next = new Set(prev);
-      next.add(halamanId);
-      return next;
-    });
-  }
-
-  function selectAll() {
-    setSelected(new Set(pages.map((p) => p.halamanId)));
-  }
-
-  function applyBulkValue(v: number) {
-    const clamped = Math.max(0, Math.min(100, Math.round(v)));
+  /** Set every page to the same value (replaces the old bulk-select modal). */
+  function fillAll(preset: number) {
+    const clamped = Math.max(0, Math.min(100, Math.round(preset)));
     setValues((prev) => {
       const next = { ...prev };
-      selected.forEach((id) => {
-        next[id] = clamped;
-      });
+      for (const p of latest.current.pages) next[p.halamanId] = clamped;
       return next;
     });
   }
 
-  /** Jump the page grid to a page number and briefly highlight it. */
+  /** Keyboard shortcut on a row: keys 1–5 map to the five presets. */
+  function handleRowKey(e: React.KeyboardEvent, halamanId: string) {
+    const target = e.target as HTMLElement | null;
+    if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+    const idx = ["1", "2", "3", "4", "5"].indexOf(e.key);
+    if (idx >= 0) {
+      e.preventDefault();
+      applyPreset(halamanId, PRESETS[idx]);
+    }
+  }
+
+  /** Jump the list to a page number and briefly highlight its row. */
   function handleJump(e: React.FormEvent) {
     e.preventDefault();
     if (pages.length === 0) return;
@@ -221,70 +249,34 @@ export function KitabGradeSheet({
       return;
     }
     document
-      .getElementById(`page-${page.halamanId}`)
+      .getElementById(`row-${page.halamanId}`)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
     setHighlightId(page.halamanId);
     if (jumpTimer.current) window.clearTimeout(jumpTimer.current);
     jumpTimer.current = window.setTimeout(() => setHighlightId(null), 2500);
   }
 
-  async function handleSave() {
-    if (!santriId || !kitabId || pages.length === 0 || changedPages.length === 0) return;
-    setSaving(true);
-    try {
-      await toast.promise(
-        api("/api/pencapaian", {
-          method: "POST",
-          body: JSON.stringify({
-            santriId,
-            kitabId,
-            nilai: changedPages.map((p) => ({
-              halamanId: p.halamanId,
-              persentase: values[p.halamanId] ?? 0,
-            })),
-          }),
-        }),
-        {
-          loading: "Menyimpan nilai...",
-          success: "Nilai berhasil disimpan.",
-          error: (err) =>
-            err instanceof Error ? err.message : "Terjadi kesalahan. Silakan coba lagi.",
-        },
-      );
-      // Treat the just-saved values as the new baseline so the sheet stops
-      // showing "unsaved changes" and the save button disables.
-      setPages((prev) =>
-        prev.map((p) => ({ ...p, persentase: values[p.halamanId] ?? 0 })),
-      );
-      // Auto-unselect after a successful save so the user doesn't have to
-      // manually clear the selection. Also reset the bulk input and ensure
-      // the bulk-set modal is closed.
-      setSelected(new Set());
-      setBulkValue("");
-      setOpen(false);
-    } catch {
-      // Error sudah ditampilkan lewat toast.
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
     <div className="space-y-4">
       {message && (
-        <p
-          className={`rounded-lg px-3 py-2 text-sm ${
+        <div
+          className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm ${
             message.kind === "error"
               ? "bg-danger/10 text-danger"
               : "bg-success/10 text-success"
           }`}
         >
-          {message.text}
-        </p>
+          <p>{message.text}</p>
+          {saveStatus === "error" && (
+            <Button type="button" size="sm" onClick={() => void doSave()}>
+              Coba lagi
+            </Button>
+          )}
+        </div>
       )}
 
       {/* Jump-to-page: quick navigation for kitab with many pages. Sticks just
-          below the top bar so it stays reachable while scrolling the grid.
+          below the top bar so it stays reachable while scrolling the list.
           Offset top-[72px] clears the sticky top bar (44px content + py-3) + border. */}
       <form
         onSubmit={handleJump}
@@ -316,35 +308,39 @@ export function KitabGradeSheet({
             <span className="truncate font-semibold">{kitabNama}</span>
             <span className="truncate text-sm text-ink-secondary">— {santriNama}</span>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="text-xs text-ink-secondary">
+          <div className="flex shrink-0 items-center gap-2 text-xs text-ink-secondary">
+            <span>
               {gradedCount} dari {pages.length} halaman terisi
             </span>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={selectAll}
-              disabled={pages.length === 0}
-            >
-              <Check className="h-4 w-4" aria-hidden />
-              Pilih semua
-            </Button>
+            <span aria-hidden>•</span>
+            <span role="status">{saveLabel}</span>
           </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-secondary">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className="h-2 w-10 rounded-full"
-              style={{ background: "linear-gradient(90deg, var(--success), var(--accent))" }}
-            />
-            0% → 100%
-          </span>
-          <span>Ketuk = pilih satu</span>
-          <span>Tekan lama & seret = pilih banyak</span>
-        </div>
+        {/* Fill-all: one tap sets every page (replaces bulk-select + modal). */}
+        {pages.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-xs font-medium text-ink-secondary">
+              Isi semua halaman:
+            </span>
+            {PRESETS.map((preset) => (
+              <Button
+                key={preset}
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => fillAll(preset)}
+              >
+                {preset}%
+              </Button>
+            ))}
+          </div>
+        )}
+
+        <p className="mt-3 text-xs text-ink-secondary">
+          Ketuk angka di tiap baris untuk memberi nilai — tersimpan otomatis. Tips keyboard:
+          tekan 1–5 untuk 0/25/50/75/100.
+        </p>
 
         <div className="mt-3">
           {loadingSheet && pages.length === 0 ? (
@@ -352,81 +348,63 @@ export function KitabGradeSheet({
           ) : pages.length === 0 ? (
             <p className="py-4 text-sm text-ink-secondary">Tidak ada halaman untuk kitab ini.</p>
           ) : (
-            <PageGrid
-              pages={pages}
-              values={values}
-              selected={selected}
-              onToggle={togglePage}
-              onPaintSelect={paintSelect}
-              onPaintEnd={() => {}}
-              highlightId={highlightId}
-            />
+            <ul className="divide-y divide-border border-t border-border">
+              {pages.map((p) => {
+                const current = values[p.halamanId] ?? 0;
+                const saved = p.persentase;
+                const label = saved === null && current === 0 ? null : current;
+                return (
+                  <li
+                    key={p.halamanId}
+                    id={`row-${p.halamanId}`}
+                    onKeyDown={(e) => handleRowKey(e, p.halamanId)}
+                    className={`scroll-mt-36 py-3 transition-colors ${
+                      p.halamanId === highlightId ? "rounded-lg bg-accent/10" : ""
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-medium text-ink">
+                        Halaman {p.nomorHalaman}
+                      </span>
+                      {label === null ? (
+                        <span className="text-xs text-ink-secondary">Belum dinilai</span>
+                      ) : (
+                        <Badge variant={pageVariant(label)}>{label}%</Badge>
+                      )}
+                    </div>
+                    <div
+                      role="group"
+                      aria-label={`Nilai halaman ${p.nomorHalaman}`}
+                      className="mt-2 grid grid-cols-5 gap-1.5"
+                    >
+                      {PRESETS.map((preset) => {
+                        const active = current === preset && label !== null;
+                        return (
+                          <button
+                            key={preset}
+                            id={`grade-${p.halamanId}-${preset}`}
+                            type="button"
+                            aria-pressed={active}
+                            aria-label={`Halaman ${p.nomorHalaman} = ${preset}%`}
+                            onClick={() => applyPreset(p.halamanId, preset)}
+                            className={`rounded-lg border px-2 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+                              active
+                                ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
+                                : "border-border text-ink-secondary hover:border-primary/40 hover:text-ink active:border-primary"
+                            }`}
+                          >
+                            {preset}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
       </Card>
-
-      {/* Always-reachable entry to the bulk-set modal (sticky above the mobile
-          bottom nav + save bar; inline on desktop). */}
-      {selected.size > 0 && (
-        <div className="sticky bottom-36 z-10 md:static">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setOpen(true)}
-            className="w-full"
-          >
-            <SlidersHorizontal className="h-4 w-4" aria-hidden />
-            Set Nilai untuk {selected.size} halaman
-          </Button>
-        </div>
-      )}
-
-      {changedPages.length === 0 && pages.length > 0 && (
-        <p className="text-xs text-ink-secondary">Belum ada perubahan untuk disimpan.</p>
-      )}
-
-      {/* Save bar — sticky bottom on mobile, inline on desktop. */}
-      <div className="sticky bottom-20 md:static">
-        <div className="md:hidden">
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || loadingSheet || pages.length === 0 || changedPages.length === 0}
-            className="w-full"
-          >
-            <Save className="h-4 w-4" aria-hidden />
-            {saving ? "Menyimpan..." : "Simpan Nilai"}
-          </Button>
-        </div>
-        <div className="hidden md:block">
-          <Button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || loadingSheet || pages.length === 0 || changedPages.length === 0}
-          >
-            <Save className="h-4 w-4" aria-hidden />
-            {saving ? "Menyimpan..." : "Simpan Nilai"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Bulk-set modal — the "N halaman dipilih / Bersihkan / preset / 0-100 /
-          Terapkan" UI, opened from the always-visible button above. */}
-      <Dialog open={open} onClose={() => setOpen(false)} title="Atur Nilai Halaman">
-        <BulkBar
-          count={selected.size}
-          value={bulkValue}
-          onValueChange={setBulkValue}
-          onApply={(v) => {
-            applyBulkValue(v);
-            setOpen(false);
-          }}
-          onClear={() => {
-            setSelected(new Set());
-            setOpen(false);
-          }}
-        />
-      </Dialog>
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   kegiatan,
   kegiatanPeserta,
   kegiatanSesi,
+  kegiatanTemplate,
   santri,
 } from "@/db/schema";
 
@@ -114,6 +115,24 @@ export interface KegiatanDetail {
   status: "aktif" | "nonaktif";
   peserta: KegiatanPesertaItem[];
   sesi: KegiatanSesiItem[];
+}
+
+export interface KegiatanTemplateItem {
+  id: string;
+  kegiatanId: string;
+  nama: string;
+  isi: string;
+  /** ISO string. */
+  updatedAt: string;
+}
+
+export async function getKegiatanTemplates(kegiatanId: string): Promise<KegiatanTemplateItem[]> {
+  const rows = await db.query.kegiatanTemplate.findMany({
+    where: (t, { eq }) => eq(t.kegiatanId, kegiatanId),
+    columns: { id: true, kegiatanId: true, nama: true, isi: true, updatedAt: true },
+    orderBy: (t, { asc }) => [asc(t.createdAt)],
+  });
+  return rows.map((r) => ({ ...r, updatedAt: r.updatedAt.toISOString() }));
 }
 
 export async function getKegiatanDetail(kegiatanId: string): Promise<KegiatanDetail | null> {
@@ -220,6 +239,8 @@ export interface SesiAbsensiData {
   tanggal: string;
   judul: string | null;
   catatan: string | null;
+  /** Jumlah sesi di kegiatan ini (untuk konteks laporan). */
+  totalSesi: number;
   peserta: SesiPesertaAbsensi[];
 }
 
@@ -240,6 +261,8 @@ export async function getSesiAbsensi(sesiId: string): Promise<SesiAbsensiData | 
   });
   const bySantri = new Map(recorded.map((r) => [r.santriId, r]));
 
+  const totalSesi = (await getKegiatanDetail(sesi.kegiatanId))?.sesi.length ?? 0;
+
   return {
     sesiId: sesi.id,
     kegiatanId: sesi.kegiatanId,
@@ -247,6 +270,7 @@ export async function getSesiAbsensi(sesiId: string): Promise<SesiAbsensiData | 
     tanggal: sesi.tanggal.toISOString(),
     judul: sesi.judul,
     catatan: sesi.catatan,
+    totalSesi,
     peserta: (detail?.peserta ?? []).map((p) => ({
       santriId: p.santriId,
       nama: p.nama,

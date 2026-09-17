@@ -67,7 +67,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
      permissions.ts         -> requireRole / requireApiRole
      roles.ts               -> Role, roleHome, roleLabel (tanpa import server)
      absensi-stats.ts       -> agregasi kegiatan/sesi/absensi (shared API + pages)
-     laporan-template.ts    -> katalog 39 variabel + render murni {{var}} (client-safe)
+      laporan-template.ts    -> katalog 45 variabel + COUNT/LIST/MATH custom + render murni {{...}} (client-safe)
    /components
      /ui                   -> Button, Card, Input, PasswordInput, Select, Badge, ProgressBar, Skeleton, ThemeToggle
      /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink, ChangePasswordForm, KegiatanManager, KegiatanDetailManager, PesertaPicker, AbsensiSheet, AbsensiHistory, TemplateManager, LaporanCard

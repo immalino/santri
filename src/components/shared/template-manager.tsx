@@ -12,6 +12,13 @@ import { Dialog } from "@/components/ui/dialog";
 import { VARIABLE_CATALOG, findUnknownVars } from "@/lib/laporan-template";
 import type { KegiatanTemplateItem } from "@/lib/absensi-stats";
 
+const CUSTOM_EXAMPLES = [
+  { snippet: "{{COUNT(hadir && remaja && laki_laki)}}", description: "Contoh hitung custom" },
+  { snippet: '{{LIST(hadir && laki_laki, "Mas {nama}")}}', description: "Contoh daftar + awalan" },
+  { snippet: "{{MATH(jumlah_hadir - jumlah_izin)}}", description: "Contoh kurang" },
+  { snippet: "{{MATH(COUNT(hadir && remaja) / total_peserta * 100)}}", description: "Contoh persen custom" },
+];
+
 const updatedAtFormatter = new Intl.DateTimeFormat("id-ID", {
   dateStyle: "medium",
   timeStyle: "short",
@@ -64,7 +71,7 @@ export function TemplateManager({
 
   function insertVar(name: string) {
     const el = isiRef.current;
-    const token = `{{${name}}}`;
+    const token = name.trim().startsWith("{{") ? name.trim() : `{{${name}}}`;
     if (!el) {
       setIsi((v) => (v ? `${v} ${token}` : token));
       return;
@@ -226,6 +233,21 @@ export function TemplateManager({
             </p>
           ) : null}
           <div className="space-y-2">
+            <p className="text-sm font-medium text-ink">Contoh custom — klik untuk menyisipkan</p>
+            <ul className="space-y-1 rounded-xl border border-border bg-surface p-2">
+              {CUSTOM_EXAMPLES.map((v) => (
+                <li key={v.snippet}>
+                  <button
+                    type="button"
+                    onClick={() => insertVar(v.snippet)}
+                    className="flex min-h-[44px] w-full flex-col items-start justify-center gap-0.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-background"
+                  >
+                    <span className="font-mono text-xs font-semibold text-primary">{v.snippet}</span>
+                    <span className="text-xs text-ink-secondary">{v.description}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
             <p className="text-sm font-medium text-ink">Variabel — klik untuk menyisipkan</p>
             <ul className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-border bg-surface p-2">
               {VARIABLE_CATALOG.map((v) => (

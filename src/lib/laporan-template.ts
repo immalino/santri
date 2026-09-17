@@ -213,10 +213,72 @@ function evalCountInner(condSrc: string, peserta: LaporanPeserta[]): number | nu
   return peserta.filter(pred).length;
 }
 
+function splitTopLevelComma(src: string): string[] {
+  const parts: string[] = [];
+  let cur = "";
+  let quote: string | null = null;
+  let depth = 0;
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (quote) {
+      cur += c;
+      if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") { quote = c; cur += c; continue; }
+    if (c === "(") depth++;
+    if (c === ")") depth--;
+    if (c === "," && depth === 0) { parts.push(cur); cur = ""; continue; }
+    cur += c;
+  }
+  parts.push(cur);
+  return parts.map((p) => p.trim());
+}
+
+function parsePatternArg(raw: string): string | null {
+  const m = /^\s*("(?:[^"]*)"|'(?:[^']*)')\s*$/.exec(raw);
+  if (!m) return null;
+  return m[1].slice(1, -1);
+}
+
+function renderListWithPattern(
+  list: LaporanPeserta[],
+  pattern: string | null
+): string {
+  const sorted = [...list].sort((a, b) => a.nama.localeCompare(b.nama, "id"));
+  if (sorted.length === 0) return "(tidak ada)";
+  if (pattern === null) {
+    return sorted
+      .map((p, i) => {
+        const ket = p.keterangan?.trim();
+        const extra = p.status === "izin" && ket ? ` (${ket})` : "";
+        return `${i + 1}. ${p.nama}${extra}`;
+      })
+      .join("\n");
+  }
+  return sorted
+    .map((p, i) =>
+      `${i + 1}. ${pattern
+        .replaceAll("{nama}", p.nama)
+        .replaceAll("{nomor}", String(i + 1))
+        .replaceAll("{keterangan}", p.keterangan?.trim() ?? "")}`
+    )
+    .join("\n");
+}
+
 function isKnownFunction(inner: string): boolean {
   const fn = /^\s*(COUNT)\s*\(([\s\S]*)\)\s*$/i.exec(inner);
-  if (!fn) return false;
-  return buildPredicate(fn[2] ?? "") !== null;
+  if (fn) return buildPredicate(fn[2] ?? "") !== null;
+  const lf = /^\s*(LIST)\s*\(([\s\S]*)\)\s*$/i.exec(inner);
+  if (!lf) return false;
+  const parts = splitTopLevelComma(lf[2] ?? "");
+  if (parts.length === 1) return buildPredicate(parts[0] ?? "") !== null;
+  if (parts.length === 2) {
+    const pattern = parsePatternArg(parts[1] ?? "");
+    if (pattern === null || !pattern.includes("{nama}")) return false;
+    return buildPredicate(parts[0] ?? "") !== null;
+  }
+  return false;
 }
 
 export function buildLaporanContext(sesi: LaporanSesiInput, totalSesi: number): LaporanContext {
@@ -305,6 +367,23 @@ function valueOf(name: string, ctx: LaporanContext): string | null {
   if (fn) {
     const n = evalCountInner(fn[2] ?? "", ctx.peserta ?? []);
     return n === null ? null : String(n);
+  }
+  const lf = /^\s*(LIST)\s*\(([\s\S]*)\)\s*$/i.exec(name);
+  if (lf) {
+    const parts = splitTopLevelComma(lf[2] ?? "");
+    if (parts.length === 1) {
+      const pred = buildPredicate(parts[0] ?? "");
+      if (!pred) return null;
+      return renderListWithPattern((ctx.peserta ?? []).filter(pred), null);
+    }
+    if (parts.length === 2) {
+      const pattern = parsePatternArg(parts[1] ?? "");
+      if (pattern === null || !pattern.includes("{nama}")) return null;
+      const pred = buildPredicate(parts[0] ?? "");
+      if (!pred) return null;
+      return renderListWithPattern((ctx.peserta ?? []).filter(pred), pattern);
+    }
+    return null;
   }
   if (Object.hasOwn(ctx.counts, name)) return String(ctx.counts[name]);
   if (Object.hasOwn(ctx.lists, name)) {

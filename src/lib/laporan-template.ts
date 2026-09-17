@@ -30,6 +30,7 @@ export interface LaporanContext {
   tanggalPanjang: string;
   counts: Record<string, number>;
   lists: Record<string, string[]>;
+  peserta: LaporanPeserta[];
 }
 
 export const VARIABLE_CATALOG: { name: string; description: string }[] = [
@@ -101,6 +102,123 @@ function pct(n: number, total: number): string {
   return `${Math.round((n / total) * 100)}%`;
 }
 
+function normalizeAtom(raw: string): string {
+  return raw.trim().toLowerCase().replace(/[\s\-]+/g, "_");
+}
+
+function atomPredicate(atom: string): ((p: LaporanPeserta) => boolean) | null {
+  switch (normalizeAtom(atom)) {
+    case "hadir": return (p) => p.status === "hadir";
+    case "izin": return (p) => p.status === "izin";
+    case "tanpa_keterangan": return (p) => p.status === "tanpa_keterangan";
+    case "belum_diabsen":
+    case "belum": return (p) => p.status === null;
+    case "tidak_hadir": return (p) => p.status === "izin" || p.status === "tanpa_keterangan";
+    case "laki_laki": return (p) => p.jenisKelamin === "laki_laki";
+    case "perempuan": return (p) => p.jenisKelamin === "perempuan";
+    case "pra_remaja": return (p) => p.kategoriUsia === "pra_remaja";
+    case "remaja": return (p) => p.kategoriUsia === "remaja";
+    case "pra_nikah": return (p) => p.kategoriUsia === "pra_nikah";
+    default: return null;
+  }
+}
+
+type CondTok =
+  | { t: "atom"; v: string }
+  | { t: "and" } | { t: "or" } | { t: "not" } | { t: "lp" } | { t: "rp" };
+
+function tokenizeCond(src: string): CondTok[] | null {
+  const toks: CondTok[] = [];
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === "(") { toks.push({ t: "lp" }); i++; continue; }
+    if (c === ")") { toks.push({ t: "rp" }); i++; continue; }
+    if (c === "!") { toks.push({ t: "not" }); i++; continue; }
+    if (c === "&" && src[i + 1] === "&") { toks.push({ t: "and" }); i += 2; continue; }
+    if (c === "|" && src[i + 1] === "|") { toks.push({ t: "or" }); i += 2; continue; }
+    if (c === "&" || c === "|") return null;
+    const m = /^[A-Za-z]+(?:[_\- ][A-Za-z0-9]+)*/.exec(src.slice(i));
+    if (!m) return null;
+    toks.push({ t: "atom", v: m[0].trim() });
+    i += m[0].length;
+  }
+  return toks;
+}
+
+function buildPredicate(condSrc: string): ((p: LaporanPeserta) => boolean) | null {
+  if (condSrc.trim() === "") return () => true;
+  const toks = tokenizeCond(condSrc);
+  if (!toks || toks.length === 0) return null;
+  const tokens: CondTok[] = toks;
+  type Pred = (p: LaporanPeserta) => boolean;
+  let pos = 0;
+  function parseOr(): Pred | null {
+    let left: Pred | null = parseAnd();
+    if (!left) return null;
+    while (pos < tokens.length && tokens[pos].t === "or") {
+      pos++;
+      const right: Pred | null = parseAnd();
+      if (!right) return null;
+      const l: Pred = left;
+      const r: Pred = right;
+      left = (p) => l(p) || r(p);
+    }
+    return left;
+  }
+  function parseAnd(): Pred | null {
+    let left: Pred | null = parseUnary();
+    if (!left) return null;
+    while (pos < tokens.length && tokens[pos].t === "and") {
+      pos++;
+      const right: Pred | null = parseUnary();
+      if (!right) return null;
+      const l: Pred = left;
+      const r: Pred = right;
+      left = (p) => l(p) && r(p);
+    }
+    return left;
+  }
+  function parseUnary(): Pred | null {
+    const tk = tokens[pos];
+    if (!tk) return null;
+    if (tk.t === "not") {
+      pos++;
+      const inner = parseUnary();
+      if (!inner) return null;
+      return (p) => !inner(p);
+    }
+    if (tk.t === "lp") {
+      pos++;
+      const inner = parseOr();
+      if (!inner || tokens[pos]?.t !== "rp") return null;
+      pos++;
+      return inner;
+    }
+    if (tk.t === "atom") {
+      pos++;
+      return atomPredicate(tk.v);
+    }
+    return null;
+  }
+  const pred = parseOr();
+  if (!pred || pos !== tokens.length) return null;
+  return pred;
+}
+
+function evalCountInner(condSrc: string, peserta: LaporanPeserta[]): number | null {
+  const pred = buildPredicate(condSrc);
+  if (!pred) return null;
+  return peserta.filter(pred).length;
+}
+
+function isKnownFunction(inner: string): boolean {
+  const fn = /^\s*(COUNT)\s*\(([\s\S]*)\)\s*$/i.exec(inner);
+  if (!fn) return false;
+  return buildPredicate(fn[2] ?? "") !== null;
+}
+
 export function buildLaporanContext(sesi: LaporanSesiInput, totalSesi: number): LaporanContext {
   const d = new Date(sesi.tanggal);
   const hadir = sesi.peserta.filter((p) => p.status === "hadir");
@@ -162,6 +280,7 @@ export function buildLaporanContext(sesi: LaporanSesiInput, totalSesi: number): 
     tanggalPanjang: new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(d),
     counts,
     lists,
+    peserta: sesi.peserta,
   };
 }
 
@@ -182,6 +301,11 @@ function valueOf(name: string, ctx: LaporanContext): string | null {
     case "persen_belum_diabsen": return pct(ctx.counts.jumlah_belum_diabsen, ctx.totalPeserta);
     default: break;
   }
+  const fn = /^\s*(COUNT)\s*\(([\s\S]*)\)\s*$/i.exec(name);
+  if (fn) {
+    const n = evalCountInner(fn[2] ?? "", ctx.peserta ?? []);
+    return n === null ? null : String(n);
+  }
   if (Object.hasOwn(ctx.counts, name)) return String(ctx.counts[name]);
   if (Object.hasOwn(ctx.lists, name)) {
     const l = ctx.lists[name];
@@ -193,19 +317,21 @@ function valueOf(name: string, ctx: LaporanContext): string | null {
 /** Variabel `{{...}}` tak dikenal — dibiarkan apa adanya + dilaporkan. */
 export function findUnknownVars(isi: string): string[] {
   const out: string[] = [];
-  const re = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
+  const re = /\{\{\s*(.+?)\s*\}\}/gs;
   let m: RegExpExecArray | null;
   while ((m = re.exec(isi)) !== null) {
-    const name = m[1];
-    if (!KNOWN.has(name) && !out.includes(name)) out.push(name);
+    const name = m[1].trim();
+    if (KNOWN.has(name)) continue;
+    if (isKnownFunction(name)) continue;
+    if (!out.includes(name)) out.push(name);
   }
   return out;
 }
 
 export function renderTemplate(isi: string, ctx: LaporanContext): { text: string; unknownVars: string[] } {
   const unknownVars = findUnknownVars(isi);
-  const text = isi.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (full, name: string) => {
-    const v = valueOf(name, ctx);
+  const text = isi.replace(/\{\{\s*(.+?)\s*\}\}/gs, (full, name: string) => {
+    const v = valueOf(name.trim(), ctx);
     return v === null ? full : v;
   });
   return { text, unknownVars };

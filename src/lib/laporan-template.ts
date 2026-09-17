@@ -72,6 +72,12 @@ export const VARIABLE_CATALOG: { name: string; description: string }[] = [
   { name: "daftar_hadir_pra_remaja", description: "Daftar hadir pra-remaja" },
   { name: "daftar_hadir_remaja", description: "Daftar hadir remaja" },
   { name: "daftar_hadir_pra_nikah", description: "Daftar hadir pra-nikah" },
+  { name: "daftar_hadir_pra_remaja_laki_laki", description: "Daftar hadir pra-remaja laki-laki" },
+  { name: "daftar_hadir_pra_remaja_perempuan", description: "Daftar hadir pra-remaja perempuan" },
+  { name: "daftar_hadir_remaja_laki_laki", description: "Daftar hadir remaja laki-laki" },
+  { name: "daftar_hadir_remaja_perempuan", description: "Daftar hadir remaja perempuan" },
+  { name: "daftar_hadir_pra_nikah_laki_laki", description: "Daftar hadir pra-nikah laki-laki" },
+  { name: "daftar_hadir_pra_nikah_perempuan", description: "Daftar hadir pra-nikah perempuan" },
 ];
 
 const KNOWN = new Set(VARIABLE_CATALOG.map((v) => v.name));
@@ -137,6 +143,12 @@ export function buildLaporanContext(sesi: LaporanSesiInput, totalSesi: number): 
     daftar_hadir_pra_remaja: numbered(hadirBy("pra_remaja", null)),
     daftar_hadir_remaja: numbered(hadirBy("remaja", null)),
     daftar_hadir_pra_nikah: numbered(hadirBy("pra_nikah", null)),
+    daftar_hadir_pra_remaja_laki_laki: numbered(hadirBy("pra_remaja", "laki_laki")),
+    daftar_hadir_pra_remaja_perempuan: numbered(hadirBy("pra_remaja", "perempuan")),
+    daftar_hadir_remaja_laki_laki: numbered(hadirBy("remaja", "laki_laki")),
+    daftar_hadir_remaja_perempuan: numbered(hadirBy("remaja", "perempuan")),
+    daftar_hadir_pra_nikah_laki_laki: numbered(hadirBy("pra_nikah", "laki_laki")),
+    daftar_hadir_pra_nikah_perempuan: numbered(hadirBy("pra_nikah", "perempuan")),
   };
 
   return {

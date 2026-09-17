@@ -213,6 +213,90 @@ function evalCountInner(condSrc: string, peserta: LaporanPeserta[]): number | nu
   return peserta.filter(pred).length;
 }
 
+function formatMathResult(n: number): string {
+  if (!Number.isFinite(n)) return "0";
+  const r = Math.round(n * 100) / 100;
+  return String(r);
+}
+
+function evalMathExpr(
+  expr: string,
+  scope: Record<string, number>,
+  countFn: (condSrc: string) => number | null
+): number | null {
+  let i = 0;
+  function skip(): void { while (i < expr.length && /\s/.test(expr[i])) i++; }
+  function parseExpr(): number | null {
+    let v = parseTerm();
+    if (v === null) return null;
+    for (;;) {
+      skip();
+      const c = expr[i];
+      if (c !== "+" && c !== "-") return v;
+      i++;
+      const rhs = parseTerm();
+      if (rhs === null) return null;
+      v = c === "+" ? v + rhs : v - rhs;
+    }
+  }
+  function parseTerm(): number | null {
+    let v = parseFactor();
+    if (v === null) return null;
+    for (;;) {
+      skip();
+      const c = expr[i];
+      if (c !== "*" && c !== "/" && c !== "%") return v;
+      i++;
+      const rhs = parseFactor();
+      if (rhs === null) return null;
+      if ((c === "/" || c === "%") && rhs === 0) return 0;
+      v = c === "*" ? v * rhs : c === "/" ? v / rhs : v % rhs;
+    }
+  }
+  function parseFactor(): number | null {
+    skip();
+    if (expr[i] === "-") { i++; const v = parseFactor(); return v === null ? null : -v; }
+    if (expr[i] === "+") { i++; return parseFactor(); }
+    if (expr[i] === "(") {
+      i++;
+      const v = parseExpr();
+      skip();
+      if (expr[i] !== ")") return null;
+      i++;
+      return v;
+    }
+    const countM = /^COUNT\s*\(/i.exec(expr.slice(i));
+    if (countM) {
+      i += countM[0].length;
+      let depth = 1;
+      const start = i;
+      while (i < expr.length && depth > 0) {
+        if (expr[i] === "(") depth++;
+        if (expr[i] === ")") depth--;
+        i++;
+      }
+      if (depth !== 0) return null;
+      const condSrc = expr.slice(start, i - 1);
+      return countFn(condSrc);
+    }
+    const numM = /^\d+(\.\d+)?/.exec(expr.slice(i));
+    if (numM) { i += numM[0].length; return parseFloat(numM[0]); }
+    const idM = /^[A-Za-z_][A-Za-z0-9_]*/.exec(expr.slice(i));
+    if (idM) {
+      i += idM[0].length;
+      const key = idM[0].toLowerCase();
+      if (key.startsWith("persen_")) return null;
+      if (!(key in scope)) return null;
+      return scope[key];
+    }
+    return null;
+  }
+  const v = parseExpr();
+  skip();
+  if (v === null || i !== expr.length) return null;
+  return v;
+}
+
 function splitTopLevelComma(src: string): string[] {
   const parts: string[] = [];
   let cur = "";
@@ -270,15 +354,23 @@ function isKnownFunction(inner: string): boolean {
   const fn = /^\s*(COUNT)\s*\(([\s\S]*)\)\s*$/i.exec(inner);
   if (fn) return buildPredicate(fn[2] ?? "") !== null;
   const lf = /^\s*(LIST)\s*\(([\s\S]*)\)\s*$/i.exec(inner);
-  if (!lf) return false;
-  const parts = splitTopLevelComma(lf[2] ?? "");
-  if (parts.length === 1) return buildPredicate(parts[0] ?? "") !== null;
-  if (parts.length === 2) {
-    const pattern = parsePatternArg(parts[1] ?? "");
-    if (pattern === null || !pattern.includes("{nama}")) return false;
-    return buildPredicate(parts[0] ?? "") !== null;
+  if (lf) {
+    const parts = splitTopLevelComma(lf[2] ?? "");
+    if (parts.length === 1) return buildPredicate(parts[0] ?? "") !== null;
+    if (parts.length === 2) {
+      const pattern = parsePatternArg(parts[1] ?? "");
+      if (pattern === null || !pattern.includes("{nama}")) return false;
+      return buildPredicate(parts[0] ?? "") !== null;
+    }
+    return false;
   }
-  return false;
+  const mf = /^\s*(MATH)\s*\(([\s\S]*)\)\s*$/i.exec(inner);
+  if (!mf) return false;
+  const scope: Record<string, number> = {};
+  for (const k of KNOWN) {
+    if (k.startsWith("jumlah_") || k === "total_peserta" || k === "total_sesi") scope[k] = 1;
+  }
+  return evalMathExpr(mf[2] ?? "", scope, (condSrc) => (buildPredicate(condSrc) ? 1 : null)) !== null;
 }
 
 export function buildLaporanContext(sesi: LaporanSesiInput, totalSesi: number): LaporanContext {
@@ -384,6 +476,12 @@ function valueOf(name: string, ctx: LaporanContext): string | null {
       return renderListWithPattern((ctx.peserta ?? []).filter(pred), pattern);
     }
     return null;
+  }
+  const mf = /^\s*MATH\s*\(([\s\S]*)\)\s*$/i.exec(name);
+  if (mf) {
+    const scope: Record<string, number> = { ...ctx.counts, total_peserta: ctx.totalPeserta, total_sesi: ctx.totalSesi };
+    const v = evalMathExpr(mf[1] ?? "", scope, (condSrc) => evalCountInner(condSrc, ctx.peserta ?? []));
+    return v === null ? null : formatMathResult(v);
   }
   if (Object.hasOwn(ctx.counts, name)) return String(ctx.counts[name]);
   if (Object.hasOwn(ctx.lists, name)) {

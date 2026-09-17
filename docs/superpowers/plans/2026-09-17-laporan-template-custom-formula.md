@@ -19,7 +19,7 @@
 - Normalisasi atom: lowercase, `[\s\-]+` → `_`.
 - MATH bagi/mod nol → `0`; hasil dibulatkan 2 desimal, hilangkan nol trailing.
 - Gagal parse/atom tak dikenal: kembalikan `{{...}}` asli + laporkan isi-trimmed di `unknownVars`.
-- Regex `{{...}}` baru: `/\{\{\s*([^{}]+?)\s*\}\}/g` (placeholder pola pakai kurung tunggal `{nama}`, tidak konflik).
+- Regex `{{...}}` baru: `/\{\{\s*([\s\S]+?)\s*\}\}/g` (placeholder pola pakai kurung tunggal `{nama}`, tidak konflik).
 
 ---
 
@@ -293,7 +293,7 @@ function evalCountInner(condSrc: string, peserta: LaporanPeserta[]): number | nu
   return peserta.filter(pred).length;
 }
 // di valueOf(), sebelum fallback counts/lists, tambahkan:
-const fn = /^\s*(COUNT)\s*\((.*)\)\s*$/is.exec(name);
+const fn = /^\s*(COUNT)\s*\(([\s\S]*)\)\s*$/i.exec(name);
 if (fn) {
   const n = evalCountInner(fn[2] ?? "", ctx.peserta ?? []);
   return n === null ? null : String(n);
@@ -425,7 +425,7 @@ function renderListWithPattern(
     .join("\n");
 }
 // di valueOf(), tambahkan cabang LIST (case-insensitive):
-// /^\s*(LIST)\s*\((.*)\)\s*$/is → splitTopLevelComma(inner)
+// /^\s*(LIST)\s*\(([\s\S]*)\)\s*$/i → splitTopLevelComma(inner)
 //   bila 1 arg → evalList(cond, null); bila 2 arg → parsePatternArg(arg2), bila null atau tanpa {nama} → return null (unknown)
 //   predikat null → return null; else renderListWithPattern(filtered, pattern)
 ```
@@ -586,7 +586,7 @@ function evalMathExpr(
   return v;
 }
 // di valueOf(): cabang MATH (case-insensitive):
-// inner = /^\s*MATH\s*\((.*)\)\s*$/is.exec(name)?.[1]; bila tidak cocok → bukan MATH
+// inner = /^\s*MATH\s*\(([\s\S]*)\)\s*$/i.exec(name)?.[1]; bila tidak cocok → bukan MATH
 // scope = { ...ctx.counts, total_peserta: ctx.totalPeserta, total_sesi: ctx.totalSesi }
 // countFn = (condSrc) => evalCountInner(condSrc, ctx.peserta ?? [])
 // v = evalMathExpr(inner, scope, countFn); bila null → return null; else return formatMathResult(v)
@@ -614,7 +614,7 @@ git commit -m "feat(laporan): tambah MATH(ekspresi) dengan COUNT nested"
 ### Task 5: Regex global + unknownVars + contekan UI + docs + regresi penuh
 
 **Files:**
-- Modify: `src/lib/laporan-template.ts:181-199` (`findUnknownVars`, `renderTemplate` regex → `/\{\{\s*([^{}]+?)\s*\}\}/g`, coba `valueOf` dulu untuk klasifikasi known)
+- Modify: `src/lib/laporan-template.ts:181-199` (`findUnknownVars`, `renderTemplate` regex → `/\{\{\s*([\s\S]+?)\s*\}\}/g`, coba `valueOf` dulu untuk klasifikasi known)
 - Modify: `src/components/shared/template-manager.tsx:220-243` (tambah 4 contoh custom di atas katalog)
 - Modify: `docs/ARCHITECTURE.md:70` (39 → 45 + fungsi custom)
 - Modify: `docs/IMPLEMENTATION.md` (update hitung katalog + aturan custom)
@@ -666,13 +666,13 @@ Expected: FAIL sebelum Task 5 bila regex/unknown belum final (atau PASS bila Tas
 // Ganti KEDUA regex (findUnknownVars + renderTemplate) dari:
 // /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g
 // menjadi:
-const VAR_RE = /\{\{\s*([^{}]+?)\s*\}\}/g;
+const VAR_RE = /\{\{\s*([\s\S]+?)\s*\}\}/g;
 ```
 
 ```ts
 export function findUnknownVars(isi: string): string[] {
   const out: string[] = [];
-  const re = /\{\{\s*([^{}]+?)\s*\}\}/g;
+   const re = /\{\{\s*([\s\S]+?)\s*\}\}/g;
   let m: RegExpExecArray | null;
   // butuh ctx dummy? TIDAK — findUnknownVars tidak punya ctx.
   // Aturan final: nama fixed yang ada di KNOWN → known.

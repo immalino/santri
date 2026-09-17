@@ -38,7 +38,7 @@ Perilaku sama seperti daftar lain: urut abjad locale `id`, bernomor `1. Nama`, k
 
 ## 4. Sintaks custom
 
-Semua dipakai di dalam `{{...}}` (spasi luar ditoleransi). Regex temu `{{...}}` diperlebar dari `([a-zA-Z0-9_]+)` menjadi `([^{}]+?)` agar menampung `()`, `&&`, `""`, koma, spasi.
+Semua dipakai di dalam `{{...}}` (spasi luar ditoleransi). Regex temu `{{...}}` diperlebar dari `([a-zA-Z0-9_]+)` menjadi `([\s\S]+?)` agar menampung `()`, `&&`, `""`, koma, spasi.
 
 ### 4.1 COUNT(kondisi) → angka
 

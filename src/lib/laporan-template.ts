@@ -317,7 +317,7 @@ function valueOf(name: string, ctx: LaporanContext): string | null {
 /** Variabel `{{...}}` tak dikenal — dibiarkan apa adanya + dilaporkan. */
 export function findUnknownVars(isi: string): string[] {
   const out: string[] = [];
-  const re = /\{\{\s*(.+?)\s*\}\}/gs;
+  const re = /\{\{\s*([\s\S]+?)\s*\}\}/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(isi)) !== null) {
     const name = m[1].trim();
@@ -330,7 +330,7 @@ export function findUnknownVars(isi: string): string[] {
 
 export function renderTemplate(isi: string, ctx: LaporanContext): { text: string; unknownVars: string[] } {
   const unknownVars = findUnknownVars(isi);
-  const text = isi.replace(/\{\{\s*(.+?)\s*\}\}/gs, (full, name: string) => {
+  const text = isi.replace(/\{\{\s*([\s\S]+?)\s*\}\}/g, (full, name: string) => {
     const v = valueOf(name.trim(), ctx);
     return v === null ? full : v;
   });

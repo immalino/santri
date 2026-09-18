@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { kitab, halaman } from "@/db/schema";
+import { kitab, kelas, halaman } from "@/db/schema";
 import { requireApiRole } from "@/lib/permissions";
 import { kitabCreateSchema } from "@/lib/validations";
 
@@ -16,7 +17,7 @@ export async function GET() {
 
   const kitabs = await db.query.kitab.findMany({
     orderBy: (k, { desc }) => [desc(k.createdAt)],
-    columns: { id: true, namaKitab: true, jumlahHalaman: true, deskripsi: true, status: true },
+    columns: { id: true, namaKitab: true, jumlahHalaman: true, deskripsi: true, status: true, kelasId: true },
   });
   return NextResponse.json(kitabs);
 }
@@ -34,7 +35,18 @@ export async function POST(request: Request) {
     );
   }
 
-  const { namaKitab, jumlahHalaman, deskripsi, status } = parsed.data;
+  const { namaKitab, jumlahHalaman, deskripsi, status, kelasId } = parsed.data;
+
+  if (kelasId) {
+    const [kelasRow] = await db
+      .select({ id: kelas.id })
+      .from(kelas)
+      .where(eq(kelas.id, kelasId))
+      .limit(1);
+    if (!kelasRow) {
+      return NextResponse.json({ error: "Kelas tidak ditemukan." }, { status: 404 });
+    }
+  }
 
   const created = await db.transaction(async (tx) => {
     const [k] = await tx
@@ -44,6 +56,7 @@ export async function POST(request: Request) {
         jumlahHalaman,
         deskripsi: deskripsi || null,
         status: status ?? "aktif",
+        kelasId: kelasId ?? null,
       })
       .returning();
     await tx.insert(halaman).values(

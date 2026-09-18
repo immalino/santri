@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { kitab, halaman } from "@/db/schema";
+import { kitab, kelas, halaman } from "@/db/schema";
 import { requireApiRole } from "@/lib/permissions";
 import { kitabUpdateSchema } from "@/lib/validations";
 
@@ -12,7 +12,7 @@ interface Params {
 async function findKitab(id: string) {
   return db.query.kitab.findFirst({
     where: (k, { eq }) => eq(k.id, id),
-    columns: { id: true, namaKitab: true, jumlahHalaman: true, deskripsi: true, status: true },
+    columns: { id: true, namaKitab: true, jumlahHalaman: true, deskripsi: true, status: true, kelasId: true },
   });
 }
 
@@ -52,7 +52,18 @@ export async function PATCH(request: Request, { params }: Params) {
     return NextResponse.json({ error: "Kitab tidak ditemukan." }, { status: 404 });
   }
 
-  const { namaKitab, jumlahHalaman, deskripsi, status } = parsed.data;
+  const { namaKitab, jumlahHalaman, deskripsi, status, kelasId } = parsed.data;
+
+  if (kelasId) {
+    const [kelasRow] = await db
+      .select({ id: kelas.id })
+      .from(kelas)
+      .where(eq(kelas.id, kelasId))
+      .limit(1);
+    if (!kelasRow) {
+      return NextResponse.json({ error: "Kelas tidak ditemukan." }, { status: 404 });
+    }
+  }
 
   if (jumlahHalaman !== undefined && jumlahHalaman < existing.jumlahHalaman) {
     return NextResponse.json(
@@ -72,6 +83,7 @@ export async function PATCH(request: Request, { params }: Params) {
         ...(jumlahHalaman !== undefined ? { jumlahHalaman } : {}),
         ...(deskripsi !== undefined ? { deskripsi: deskripsi || null } : {}),
         ...(status !== undefined ? { status } : {}),
+        ...(kelasId !== undefined ? { kelasId } : {}),
       })
       .where(eq(kitab.id, id))
       .returning();

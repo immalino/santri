@@ -5,7 +5,6 @@
  * and admin-stats). Khatam is strict: a page counts only at persentase 100.
  */
 import { db } from "@/db";
-import { kelas, kitab } from "@/db/schema";
 import { getSantriProgressData } from "./santri-progress";
 
 export interface KenaikanHalamanBelum {

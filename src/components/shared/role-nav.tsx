@@ -12,6 +12,7 @@ import {
   CalendarCheck,
   ClipboardList,
   Clock,
+  TrendingUp,
   Ellipsis,
   type LucideIcon,
 } from "lucide-react";
@@ -46,6 +47,7 @@ const navByRole: Record<Role, { items: NavItem[]; more?: NavItem[] }> = {
       { href: "/ustadz/input", label: "Input Nilai", icon: ClipboardList },
       { href: "/ustadz/santri", label: "Santri", icon: Users },
       { href: "/ustadz/kegiatan", label: "Kegiatan", icon: CalendarCheck },
+      { href: "/ustadz/laporan", label: "Laporan", icon: TrendingUp },
       { href: "/ustadz/riwayat", label: "Riwayat", icon: Clock },
     ],
   },
@@ -108,6 +110,8 @@ function MobileNav({
     ? items.length >= 4
       ? "grid-cols-5"
       : "grid-cols-4"
+    : items.length === 5
+      ? "grid-cols-5"
     : items.length === 4
       ? "grid-cols-4"
       : items.length === 3

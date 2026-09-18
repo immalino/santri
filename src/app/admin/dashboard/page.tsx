@@ -2,6 +2,8 @@ import Link from "next/link";
 import { BookOpen, TrendingUp, UserRound } from "lucide-react";
 import { requireRole } from "@/lib/permissions";
 import { getAdminRecap } from "@/lib/admin-stats";
+import { getLubangReport } from "@/lib/kenaikan";
+import { LubangReport } from "@/components/shared/lubang-report";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -20,7 +22,7 @@ function progressVariant(progress: number): "danger" | "warning" | "success" | "
 /** Admin dashboard (tasks 4.14–4.15). Rendered fully server-side. */
 export default async function AdminDashboardPage() {
   await requireRole(["admin"]);
-  const recap = await getAdminRecap();
+  const [recap, lubang] = await Promise.all([getAdminRecap(), getLubangReport()]);
 
   const stats = [
     { label: "Total Santri Aktif", value: recap.totalSantriAktif, icon: UserRound },
@@ -107,6 +109,11 @@ export default async function AdminDashboardPage() {
           )}
         </section>
       </div>
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold text-ink">Halaman Paling Kosong per Materi Kelas</h2>
+        <LubangReport data={lubang} />
+      </section>
     </div>
   );
 }

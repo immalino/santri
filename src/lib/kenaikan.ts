@@ -4,7 +4,9 @@
  * computed server-side on each page load (same pattern as santri-progress
  * and admin-stats). Khatam is strict: a page counts only at persentase 100.
  */
+import { inArray } from "drizzle-orm";
 import { db } from "@/db";
+import { pencapaian } from "@/db/schema";
 import { getSantriProgressData } from "./santri-progress";
 
 export interface KenaikanHalamanBelum {
@@ -130,4 +132,113 @@ export async function getKenaikanStatus(santriId: string): Promise<KenaikanStatu
     kurangHalaman,
     kitabBelum,
   };
+}
+
+export interface LubangHalaman {
+  kitabId: string;
+  namaKitab: string;
+  nomorHalaman: number;
+  /** Santri (denominator) dengan nilai 100 di halaman ini. */
+  khatamCount: number;
+  totalSantri: number;
+  /** Math.round(khatamCount / totalSantri * 100), 0 bila penyebut 0. */
+  persenKhatam: number;
+}
+
+export interface LubangKelas {
+  kelasId: string;
+  namaKelas: string;
+  urutan: number;
+  /** Top 100 halaman paling kosong milik kitab kelas ini. */
+  halaman: LubangHalaman[];
+}
+
+export async function getLubangReport(): Promise<LubangKelas[]> {
+  const kelasRows = await db.query.kelas.findMany({
+    columns: { id: true, namaKelas: true, urutan: true, bebasSyarat: true },
+    orderBy: (k, { asc }) => [asc(k.urutan), asc(k.namaKelas)],
+  });
+  const bebasIds = new Set(kelasRows.filter((k) => k.bebasSyarat).map((k) => k.id));
+  const santriRows = await db.query.santri.findMany({
+    where: (s, { eq }) => eq(s.statusAktif, true),
+    columns: { id: true, kelasId: true },
+  });
+  const denomIds = new Set(
+    santriRows.filter((s) => !s.kelasId || !bebasIds.has(s.kelasId)).map((s) => s.id),
+  );
+
+  const kitabRows = await db.query.kitab.findMany({
+    columns: { id: true, namaKitab: true, status: true, kelasId: true },
+  });
+  const pemilikByKitab = new Map<string, (typeof kelasRows)[number]>();
+  for (const kb of kitabRows) {
+    if (kb.status !== "aktif" || !kb.kelasId) continue;
+    const pemilik = kelasRows.find((k) => k.id === kb.kelasId);
+    if (pemilik && !pemilik.bebasSyarat) pemilikByKitab.set(kb.id, pemilik);
+  }
+  const namaKitabById = new Map(kitabRows.map((k) => [k.id, k.namaKitab]));
+
+  const halamanRows =
+    pemilikByKitab.size > 0
+      ? await db.query.halaman.findMany({
+          where: (h, { inArray }) => inArray(h.kitabId, [...pemilikByKitab.keys()]),
+          columns: { id: true, kitabId: true, nomorHalaman: true },
+        })
+      : [];
+
+  const khatamByHalaman = new Map<string, number>();
+  if (halamanRows.length > 0 && denomIds.size > 0) {
+    const nilai = await db
+      .select({
+        halamanId: pencapaian.halamanId,
+        santriId: pencapaian.santriId,
+        persentase: pencapaian.persentase,
+      })
+      .from(pencapaian)
+      .where(
+        inArray(
+          pencapaian.halamanId,
+          halamanRows.map((h) => h.id),
+        ),
+      );
+    for (const n of nilai) {
+      if (n.persentase === 100 && denomIds.has(n.santriId)) {
+        khatamByHalaman.set(n.halamanId, (khatamByHalaman.get(n.halamanId) ?? 0) + 1);
+      }
+    }
+  }
+
+  const totalSantri = denomIds.size;
+  const byKelas = new Map<string, LubangHalaman[]>();
+  for (const h of halamanRows) {
+    const pemilik = pemilikByKitab.get(h.kitabId)!;
+    const khatamCount = khatamByHalaman.get(h.id) ?? 0;
+    const list = byKelas.get(pemilik.id) ?? [];
+    list.push({
+      kitabId: h.kitabId,
+      namaKitab: namaKitabById.get(h.kitabId) ?? "?",
+      nomorHalaman: h.nomorHalaman,
+      khatamCount,
+      totalSantri,
+      persenKhatam: totalSantri > 0 ? Math.round((khatamCount / totalSantri) * 100) : 0,
+    });
+    byKelas.set(pemilik.id, list);
+  }
+
+  return kelasRows
+    .filter((k) => byKelas.has(k.id))
+    .map((k) => ({
+      kelasId: k.id,
+      namaKelas: k.namaKelas,
+      urutan: k.urutan,
+      halaman: byKelas
+        .get(k.id)!
+        .sort(
+          (a, b) =>
+            a.persenKhatam - b.persenKhatam ||
+            a.namaKitab.localeCompare(b.namaKitab, "id") ||
+            a.nomorHalaman - b.nomorHalaman,
+        )
+        .slice(0, 100),
+    }));
 }

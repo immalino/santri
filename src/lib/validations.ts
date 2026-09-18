@@ -23,6 +23,7 @@ export const kitabCreateSchema = z.object({
     .min(1, "Jumlah halaman minimal 1."),
   deskripsi: deskripsiOptional,
   status: z.enum(["aktif", "nonaktif"]).optional(),
+  kelasId: z.string().uuid("Kelas tidak valid.").nullable().optional(),
 });
 
 /** Partial update: every field optional (e.g. toggling status only). */
@@ -35,13 +36,22 @@ export const kitabUpdateSchema = z.object({
     .optional(),
   deskripsi: deskripsiOptional,
   status: z.enum(["aktif", "nonaktif"]).optional(),
+  kelasId: z.string().uuid("Kelas tidak valid.").nullable().optional(),
 });
 
 // --- Kelas -----------------------------------------------------------------
 
+const urutanSchema = z.coerce
+  .number("Urutan harus angka.")
+  .int("Urutan harus bilangan bulat.")
+  .min(0, "Urutan minimal 0.")
+  .optional();
+
 export const kelasInputSchema = z.object({
   namaKelas: z.string().trim().min(1, "Nama kelas wajib diisi."),
   deskripsi: deskripsiOptional,
+  urutan: urutanSchema,
+  bebasSyarat: z.boolean().optional(),
 });
 
 // --- Santri ----------------------------------------------------------------

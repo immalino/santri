@@ -76,6 +76,8 @@ Referensi kelas/angkatan santri, bisa di-manage admin.
 | id | uuid, PK | |
 | nama_kelas | text | misal "Angkatan 2024" |
 | deskripsi | text, nullable | |
+| urutan | integer, default 0 | urutan jenjang (A=1, B=2, ...) |
+| bebas_syarat | boolean, default false | kelas lulus: bebas kewajiban khatam |
 | created_at | timestamp | |
 | updated_at | timestamp | |
 
@@ -112,6 +114,7 @@ Unique constraint: (`wali_id`, `santri_id`) — mencegah duplikat relasi.
 | jumlah_halaman | integer | |
 | deskripsi | text, nullable | |
 | status | enum(`aktif`, `nonaktif`), default `aktif` | soft delete — tetap tampil di progress santri |
+| kelas_id | uuid, FK → kelas.id, nullable | pemilik materi; null = belum dipetakan, diabaikan |
 | created_at | timestamp | |
 | updated_at | timestamp | |
 
@@ -225,7 +228,7 @@ user (role: admin/ustadz/wali)
   │
   ├──< session, account, verification (better-auth)
   │
-  ├──< wali_santri >── santri >── kelas
+  ├──< wali_santri >── santri >── kelas <── kitab
   │                       │
   │                       └──< pencapaian >── halaman >── kitab
   │

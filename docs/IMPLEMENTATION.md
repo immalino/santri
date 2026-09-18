@@ -2,7 +2,7 @@
 
 **Project:** e-Santri
 **Status:** 🔄 Dalam Pengerjaan (update checklist di bawah setiap selesai mengerjakan)
-**Terakhir di-update:** 2026-09-16
+**Terakhir di-update:** 2026-09-18
 
 > Plan ini ditulis seperti arahan **senior developer → junior developer**. Idenya: kamu (junior, manusia atau AI) mengerjakan step-by-step sesuai urutan, centang checklist ketika selesai, dan jangan lompat ke fase berikutnya sebelum fase sebelumnya **Definition of Done**-nya terpenuhi.
 
@@ -44,6 +44,7 @@
 - [x] **Fase 11 — Kategori Usia + Jenis Kelamin Santri, Filter Peserta & Rename e-Santri**
 - [x] **Fase 12 — Template Laporan Teks per Sesi (Admin & Ustadz)**
 - [x] **Tambahan (pasca Fase 12) — Filter/Sort Daftar Santri + Edit Massal (Admin)**
+- [x] **Fase 13 — Kurikulum Kelas–Kitab + Laporan Kenaikan & Lubang**
 
 ---
 
@@ -632,6 +633,33 @@
 > - **Filter client-side** dari data yang sudah dimuat server (daftar santri relatif kecil) — tanpa API list baru.
 > - **Bulk non-goals:** nama tidak bisa diubah massal; tidak ada undo/riwayat perubahan massal.
 > - **`NONE_VALUE` (`__none__`)** dipakai untuk opsi "Tanpa kelas"/"Belum diisi"; filter kelas memakai **nama kelas** (bukan id) agar bisa dipakai bersama halaman progress ustadz/wali yang tidak punya `kelasId`.
+
+---
+
+## 10g. Fase 13 — Kurikulum Kelas–Kitab + Laporan Kenaikan & Lubang
+
+**Tujuan:** Setiap kitab dipetakan ke satu kelas sebagai pemilik materi (kurikulum berjenjang via `urutan` + kelas lulus via `bebas_syarat`); santri melihat sisa syarat naik kelas (kumulatif, khatam strict 100%) dan admin/ustadz melihat 100 halaman paling kosong per materi kelas.
+
+### Task
+
+- [x] **13.1** Skema DB (`src/db/schema.ts`): kolom `urutan` (integer, default 0) + `bebas_syarat` (boolean, default false) di `kelas`; kolom `kelas_id` (uuid FK → kelas.id, nullable) di `kitab` + relasi Drizzle `kelas.kitab` / `kitab.kelas`.
+- [x] **13.2** Validasi zod (`src/lib/validations.ts`): `kelasInputSchema` (+`urutan?`, +`bebasSyarat?`); `kitabCreateSchema`/`kitabUpdateSchema` (+`kelasId?` nullable).
+- [x] **13.3** API kelas (`src/app/api/kelas/route.ts`, `[id]/route.ts`): GET urut `urutan` lalu nama (+`urutan`, `bebasSyarat`, `jumlahSantri`); POST/PATCH terima `urutan`/`bebasSyarat`; DELETE 400 bila masih ada santri atau kitab yang dipetakan.
+- [x] **13.4** API kitab (`src/app/api/kitab/route.ts`, `[id]/route.ts`): respons memuat `kelasId`; tulis `kelas_id` dengan cek keberadaan kelas (non-null yang tidak ada → 404 "Kelas tidak ditemukan.").
+- [x] **13.5** Helper `getKenaikanStatus` (`src/lib/kenaikan.ts`): sisa khatam kumulatif per santri (kitab aktif milik kelas berurutan ≤ kelas santri; kitab null/nonaktif/milik kelas lulus dikecualikan; halaman khatam hanya bila 100%).
+- [x] **13.6** Helper `getLubangReport` (`src/lib/kenaikan.ts`): top-100 halaman paling kosong per materi kelas (penyebut santri aktif non-lulus; urut % khatam menaik).
+- [x] **13.7** UI admin pemetaan (`kelas-manager.tsx`, `kitab-manager.tsx` + halaman `/admin/kelas`, `/admin/kitab`): atur `urutan`/`bebasSyarat` dan petakan/lepas `kelas_id` kitab.
+- [x] **13.8** Kartu "Syarat Naik Kelas" (`KenaikanCard`) di 3 halaman pencapaian (`/admin|ustadz|wali/santri/[id]/pencapaian`): status satu baris + expand kitab/halaman belum khatam; wali read-only.
+- [x] **13.9** Laporan lubang (`LubangReport` + `/ustadz/laporan` + seksi dashboard admin + nav ustadz "Laporan"): blok per materi kelas + top-100 + empty state.
+
+### Definition of Done (Fase 13)
+
+- [x] Admin bisa memetakan kitab ke kelas & mengatur urutan/lulus; hapus kelas yang masih dipetakan ditolak 400.
+- [x] Kartu sisa benar di 3 role (kumulatif, khatam strict 100%).
+- [x] Top-100 per materi benar + guard wali (wali tidak bisa akses laporan).
+- [x] `npm run lint` & `npm run build` hijau.
+
+> 📝 **Catatan Fase 13:** penomoran seksi memakai `10g` karena `10d`–`10f` sudah terisi (Fase 11, Fase 12, Tambahan) — isi sesuai brief Task 10 Step 4.
 
 ---
 

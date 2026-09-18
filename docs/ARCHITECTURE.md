@@ -30,7 +30,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
     /(auth)
       /login
     /admin                -> prefix role (keputusan Fase 2, bukan route group)
-      /dashboard          -> rekap semua santri
+      /dashboard          -> rekap semua santri + seksi lubang (100 halaman paling kosong per materi kelas)
       /kitab              -> CRUD kitab (+ auto-generate halaman)
       /santri             -> CRUD santri (+ /[id] detail editable, /[id]/kitab/[kitabId] grid nilai)
       /kegiatan           -> CRUD kegiatan (+ /[id] peserta & sesi, /[id]/sesi/[sesiId] input absensi)
@@ -42,6 +42,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
       /input              -> pilih santri -> pilih kitab -> input persentase
       /santri             -> daftar santri (+ /[id] detail editable, /[id]/kitab/[kitabId] grid nilai)
       /kegiatan           -> CRUD kegiatan (+ /[id] peserta & sesi, /[id]/sesi/[sesiId] input absensi)
+      /laporan            -> 100 halaman paling kosong per materi kelas
       /riwayat            -> riwayat penilaian
       /pengaturan         -> ganti password sendiri
     /wali
@@ -66,11 +67,12 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
      auth-client.ts         -> client-side auth helper
      permissions.ts         -> requireRole / requireApiRole
      roles.ts               -> Role, roleHome, roleLabel (tanpa import server)
-     absensi-stats.ts       -> agregasi kegiatan/sesi/absensi (shared API + pages)
+      absensi-stats.ts       -> agregasi kegiatan/sesi/absensi (shared API + pages)
+      kenaikan.ts            -> getKenaikanStatus + getLubangReport (shared API + pages)
       laporan-template.ts    -> katalog 45 variabel + COUNT/LIST/MATH custom + render murni {{...}} (client-safe)
    /components
      /ui                   -> Button, Card, Input, PasswordInput, Select, Badge, ProgressBar, Skeleton, ThemeToggle
-     /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink, ChangePasswordForm, KegiatanManager, KegiatanDetailManager, PesertaPicker, AbsensiSheet, AbsensiHistory, TemplateManager, LaporanCard
+      /shared               -> TopBar, RoleNav, LogoutButton, SantriProgressDetail, KitabGradeSheet, BackLink, ChangePasswordForm, KegiatanManager, KegiatanDetailManager, PesertaPicker, AbsensiSheet, AbsensiHistory, TemplateManager, LaporanCard, KenaikanCard, LubangReport
      /admin, /wali
   proxy.ts                 -> Next 16 proxy (pengganti middleware.ts)
 ```
@@ -85,7 +87,8 @@ Mengikuti entitas dari PRD bagian 5:
 users            (dikelola better-auth: id, email, password, role[admin|ustadz|wali])
 santri           (id, nama, kelas, status_aktif)
 wali_santri      (wali_id, santri_id)         -- relasi many-to-many
-kitab            (id, nama, jumlah_halaman, deskripsi, status[aktif|nonaktif])
+kelas            (id, nama, deskripsi, urutan, bebas_syarat)
+kitab            (id, nama, jumlah_halaman, deskripsi, status[aktif|nonaktif], kelas_id → kelas.id, nullable)
 halaman          (id, kitab_id, nomor_halaman) -- auto-generate saat kitab dibuat/diedit
 pencapaian       (id, santri_id, halaman_id, persentase, dinilai_oleh(users.id), tanggal)
 kegiatan         (id, nama, deskripsi, status[aktif|nonaktif], dibuat_oleh(users.id))
@@ -102,6 +105,8 @@ Catatan implementasi:
 - Saat jumlah halaman kitab ditambah, sistem cukup `INSERT` baris `halaman` baru tanpa menyentuh baris lama — data `pencapaian` yang sudah ada tetap aman.
 - Saat kegiatan dibuat, sesi pertama otomatis dibuat dari tanggal yang diisi — kegiatan sekali jalan cukup 1 sesi, kegiatan rutin tambah sesi lagi dari halaman detail. Menghapus peserta tidak menghapus baris `absensi` historis.
 - `kegiatan_template` (template laporan teks) dimiliki per kegiatan: hapus kegiatan meng-cascade template; tambah/hapus peserta atau sesi tidak menyentuh template. Render `{{var}}` murni di browser dari data sesi yang sudah dimuat server.
+- Syarat naik kelas dihitung kumulatif (semua materi kelas berurutan ≤ kelas santri) + khatam strict 100% secara on-the-fly tanpa snapshot; kitab yang belum dipetakan (kelas null), nonaktif, atau milik kelas lulus (bebas syarat) dikecualikan.
+- Hapus kelas yang masih dipetakan kitab ditolak 400 (lepas dulu pemetaan kitabnya).
 
 ## 5. Autentikasi & Otorisasi
 

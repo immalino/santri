@@ -48,16 +48,20 @@ Tidak ada sidebar kompleks seperti referensi — cukup 3-4 menu utama per role d
 - Dashboard: ringkasan card sederhana (Total Santri, Total Kitab, Rata-rata Progress) — versi ringan dari card statistik di referensi, tanpa chart donut kompleks
 - List Kitab/Santri/Ustadz/Wali/Kegiatan: **grid kartu** (1 kolom di mobile → 2 kolom di desktop). Keputusan implementasi Fase 7: grid kartu dipertahankan di semua breakpoint demi konsistensi — tidak memakai table di desktop (deviasi dari draft awal §4 ini; disepakati saat QA Fase 7).
 - Halaman Kegiatan (Fase 10): list kartu (nama, jumlah peserta/sesi, tanggal terakhir) → **detail kegiatan** (seksi Peserta dengan search + Pilih Semua/Bersihkan, seksi Sesi Pertemuan) → **input absensi per sesi** (toggle 3 status per santri + keterangan saat izin, bulk "Semua Hadir", tombol Simpan sticky)
+- Halaman Pencapaian Santri: kartu "Syarat Naik Kelas" di atas progress (status satu baris + expand kitab/halaman belum khatam)
 
 ### Ustadz
-- Bottom nav: Input Nilai, Santri, Kegiatan, Riwayat
+- Bottom nav: Input Nilai, Santri, Kegiatan, Laporan, Riwayat
 - Halaman Input: pilih santri (search/dropdown) → pilih kitab → **grid kotak halaman** — tiap kotak menampilkan nomor halaman, isi warna kotak (gradasi hijau→gold) setinggi persentase sehingga "penuh/tidaknya" kotak = progres halaman itu; bulk set: tap pilih satu, tekan lama & seret pilih banyak, lalu set semua halaman terpilih ke satu nilai (preset/input kustom); tombol Simpan sticky di bawah (mobile)
 - Halaman Santri (Fase 8): daftar santri (kartu + rata-rata keseluruhan) → **detail santri** (card kitab editable, link ke grid nilai) → **grid nilai per halaman** (pola sama dengan Input Nilai, nilai lama ter-preload)
 - Halaman Kegiatan (Fase 10): sama seperti admin (CRUD + input absensi)
+- Halaman Laporan: blok per materi kelas (top-100 halaman paling kosong, urut % khatam menaik) + empty state bila belum ada pemetaan
+- Halaman Pencapaian Santri: kartu "Syarat Naik Kelas" di atas progress (status satu baris + expand kitab/halaman belum khatam)
 
 ### Wali Santri
 - Bottom nav: Santri
 - Halaman Santri (Fase 8): daftar anak yang terhubung (kartu + rata-rata keseluruhan) → **detail read-only**: card per kitab dengan progress bar horizontal + persentase, tap untuk expand breakdown per halaman — tanpa affordance edit (bukan switch, karena tiap anak punya URL detail sendiri)
+- Halaman Pencapaian Santri: kartu "Syarat Naik Kelas" read-only di atas progress (status satu baris + expand kitab/halaman belum khatam)
 - Riwayat Absensi (Fase 10): seksi di bawah progress kitab — card per kegiatan (X hadir • Y izin • Z tanpa ket. • N sesi), tap untuk expand status per sesi dengan badge + keterangan izin
 
 ## 5. Komponen UI (Tailwind, custom — tanpa library komponen)

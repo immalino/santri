@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { kelas, santri } from "@/db/schema";
+import { kelas, kitab, santri } from "@/db/schema";
 import { requireApiRole } from "@/lib/permissions";
 import { kelasInputSchema } from "@/lib/validations";
 
@@ -23,10 +23,15 @@ export async function PATCH(request: Request, { params }: Params) {
     );
   }
 
-  const { namaKelas, deskripsi } = parsed.data;
+  const { namaKelas, deskripsi, urutan, bebasSyarat } = parsed.data;
   const [updated] = await db
     .update(kelas)
-    .set({ namaKelas, deskripsi: deskripsi || null })
+    .set({
+      namaKelas,
+      deskripsi: deskripsi || null,
+      ...(urutan !== undefined ? { urutan } : {}),
+      ...(bebasSyarat !== undefined ? { bebasSyarat } : {}),
+    })
     .where(eq(kelas.id, id))
     .returning();
 
@@ -62,6 +67,17 @@ export async function DELETE(_req: Request, { params }: Params) {
   if (santriInKelas.length > 0) {
     return NextResponse.json(
       { error: "Kelas masih memiliki santri. Pindahkan atau hapus santri dulu." },
+      { status: 400 },
+    );
+  }
+
+  const [{ value: jumlahKitab }] = await db
+    .select({ value: count() })
+    .from(kitab)
+    .where(eq(kitab.kelasId, id));
+  if (jumlahKitab > 0) {
+    return NextResponse.json(
+      { error: `Kelas masih dipakai ${jumlahKitab} kitab. Pindahkan kitab dulu.` },
       { status: 400 },
     );
   }

@@ -10,11 +10,18 @@ export async function GET() {
   if (session instanceof Response) return session;
 
   const rows = await db.query.kelas.findMany({
-    orderBy: (k, { asc }) => [asc(k.namaKelas)],
+    orderBy: (k, { asc }) => [asc(k.urutan), asc(k.namaKelas)],
     with: { santri: { columns: { id: true } } },
   });
   return NextResponse.json(
-    rows.map((r) => ({ id: r.id, namaKelas: r.namaKelas, deskripsi: r.deskripsi, jumlahSantri: r.santri.length })),
+    rows.map((r) => ({
+      id: r.id,
+      namaKelas: r.namaKelas,
+      deskripsi: r.deskripsi,
+      urutan: r.urutan,
+      bebasSyarat: r.bebasSyarat,
+      jumlahSantri: r.santri.length,
+    })),
   );
 }
 
@@ -31,10 +38,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const { namaKelas, deskripsi } = parsed.data;
+  const { namaKelas, deskripsi, urutan, bebasSyarat } = parsed.data;
   const [created] = await db
     .insert(kelas)
-    .values({ namaKelas, deskripsi: deskripsi || null })
+    .values({
+      namaKelas,
+      deskripsi: deskripsi || null,
+      urutan: urutan ?? 0,
+      bebasSyarat: bebasSyarat ?? false,
+    })
     .returning();
 
   return NextResponse.json(created, { status: 201 });

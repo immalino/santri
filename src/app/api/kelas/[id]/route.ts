@@ -42,7 +42,7 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 /**
- * Delete a kelas. Hard-delete is only allowed when no santri references it;
+ * Delete a kelas. Hard-delete is only allowed when no santri or kitab references it;
  * otherwise reject so santri records (and their relations) stay intact.
  */
 export async function DELETE(_req: Request, { params }: Params) {

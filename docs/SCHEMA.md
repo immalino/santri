@@ -256,6 +256,8 @@ export const kelas = pgTable("kelas", {
   id: uuid("id").defaultRandom().primaryKey(),
   namaKelas: text("nama_kelas").notNull(),
   deskripsi: text("deskripsi"),
+  urutan: integer("urutan").default(0).notNull(),
+  bebasSyarat: boolean("bebas_syarat").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -277,6 +279,7 @@ export const kitab = pgTable("kitab", {
   jumlahHalaman: integer("jumlah_halaman").notNull(),
   deskripsi: text("deskripsi"),
   status: kitabStatusEnum("status").default("aktif").notNull(),
+  kelasId: uuid("kelas_id").references(() => kelas.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

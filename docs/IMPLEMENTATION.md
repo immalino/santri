@@ -660,6 +660,14 @@
 - [x] `npm run lint` & `npm run build` hijau.
 
 > 📝 **Catatan Fase 13:** penomoran seksi memakai `10g` karena `10d`–`10f` sudah terisi (Fase 11, Fase 12, Tambahan) — isi sesuai brief Task 10 Step 4.
+>
+> 🗄️ **Migrasi prod (additive SQL — run on prod, never push):**
+> ```sql
+> ALTER TABLE kelas ADD COLUMN IF NOT EXISTS urutan integer NOT NULL DEFAULT 0;
+> ALTER TABLE kelas ADD COLUMN IF NOT EXISTS bebas_syarat boolean NOT NULL DEFAULT false;
+> ALTER TABLE kitab ADD COLUMN IF NOT EXISTS kelas_id uuid REFERENCES kelas(id);
+> ```
+> Dev migrated via `db:push`; prod must run the SQL above (never `db:push` to prod — drizzle-kit introspection bug, see Fase 4 note).
 
 ---
 

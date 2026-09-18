@@ -18,6 +18,8 @@ export default async function AdminKelasPage() {
     id: r.id,
     namaKelas: r.namaKelas,
     deskripsi: r.deskripsi,
+    urutan: r.urutan,
+    bebasSyarat: r.bebasSyarat,
     jumlahSantri: r.santri.length,
   }));
 

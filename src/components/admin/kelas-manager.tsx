@@ -15,15 +15,19 @@ export interface KelasItem {
   id: string;
   namaKelas: string;
   deskripsi: string | null;
+  urutan: number;
+  bebasSyarat: boolean;
   jumlahSantri: number;
 }
 
 interface KelasForm {
   namaKelas: string;
   deskripsi: string;
+  urutan: string;
+  bebasSyarat: boolean;
 }
 
-const emptyForm: KelasForm = { namaKelas: "", deskripsi: "" };
+const emptyForm: KelasForm = { namaKelas: "", deskripsi: "", urutan: "0", bebasSyarat: false };
 
 /** Kelas management (task 4.7). Create/edit via the admin API, delete allowed only when empty. */
 export default function KelasManager({ initialKelas }: { initialKelas: KelasItem[] }) {
@@ -46,7 +50,7 @@ export default function KelasManager({ initialKelas }: { initialKelas: KelasItem
 
   function openEdit(item: KelasItem) {
     setEditingId(item.id);
-    setForm({ namaKelas: item.namaKelas, deskripsi: item.deskripsi ?? "" });
+    setForm({ namaKelas: item.namaKelas, deskripsi: item.deskripsi ?? "", urutan: String(item.urutan), bebasSyarat: item.bebasSyarat });
     setShowForm(true);
   }
 
@@ -61,6 +65,8 @@ export default function KelasManager({ initialKelas }: { initialKelas: KelasItem
     const payload = {
       namaKelas: form.namaKelas.trim(),
       deskripsi: form.deskripsi.trim() || undefined,
+      urutan: Number(form.urutan),
+      bebasSyarat: form.bebasSyarat,
     };
     try {
       await toast.promise(
@@ -105,7 +111,8 @@ export default function KelasManager({ initialKelas }: { initialKelas: KelasItem
         <div>
           <h1 className="text-2xl font-semibold text-ink">Kelola Kelas</h1>
           <p className="mt-1 text-sm text-ink-secondary">
-            Kelas / angkatan untuk santri, bisa diubah oleh admin.
+            Kelas / angkatan santri sekaligus jenjang materi kitab. Atur urutan menaik (A=1,
+            B=2, ...) dan tandai kelas lulus bila perlu.
           </p>
         </div>
         <Button type="button" onClick={openCreate}>
@@ -151,6 +158,28 @@ export default function KelasManager({ initialKelas }: { initialKelas: KelasItem
               placeholder="Keterangan singkat (opsional)"
             />
           </Field>
+
+          <Field label="Urutan Jenjang" htmlFor="urutan-kelas">
+            <Input
+              id="urutan-kelas"
+              type="number"
+              min={0}
+              step={1}
+              value={form.urutan}
+              onChange={(e) => setForm((f) => ({ ...f, urutan: e.target.value }))}
+              placeholder="mis. 1 untuk kelas A"
+            />
+          </Field>
+
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-[#0E6B4F]"
+              checked={form.bebasSyarat}
+              onChange={(e) => setForm((f) => ({ ...f, bebasSyarat: e.target.checked }))}
+            />
+            Kelas lulus (bebas syarat khatam, mis. Lulus Pra-nikah)
+          </label>
         </form>
       </Dialog>
 
@@ -171,6 +200,10 @@ export default function KelasManager({ initialKelas }: { initialKelas: KelasItem
                     <p className="truncate font-semibold text-ink">{item.namaKelas}</p>
                     <p className="text-sm text-ink-secondary">
                       {item.jumlahSantri} santri
+                    </p>
+                    <p className="text-sm text-ink-secondary">
+                      Urutan {item.urutan}
+                      {item.bebasSyarat ? " • Bebas syarat" : ""}
                     </p>
                     {item.deskripsi ? (
                       <p className="mt-1 line-clamp-2 text-sm text-ink-secondary">{item.deskripsi}</p>

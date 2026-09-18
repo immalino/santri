@@ -19,6 +19,8 @@ export interface KitabItem {
   jumlahHalaman: number;
   deskripsi: string | null;
   status: "aktif" | "nonaktif";
+  kelasId: string | null;
+  kelasNama: string | null;
 }
 
 interface KitabForm {
@@ -26,6 +28,7 @@ interface KitabForm {
   jumlahHalaman: string;
   deskripsi: string;
   status: "aktif" | "nonaktif";
+  kelasId: string;
 }
 
 const emptyForm: KitabForm = {
@@ -33,6 +36,7 @@ const emptyForm: KitabForm = {
   jumlahHalaman: "1",
   deskripsi: "",
   status: "aktif",
+  kelasId: "",
 };
 
 /**
@@ -40,7 +44,13 @@ const emptyForm: KitabForm = {
  * the admin API, then re-fetches the GET route so the UI stays in sync with
  * the database (including auto-generated halaman counts).
  */
-export default function KitabManager({ initialKitabs }: { initialKitabs: KitabItem[] }) {
+export default function KitabManager({
+  initialKitabs,
+  kelasOptions,
+}: {
+  initialKitabs: KitabItem[];
+  kelasOptions: { id: string; namaKelas: string; urutan: number }[];
+}) {
   const toast = useToast();
   const [kitabs, setKitabs] = useState<KitabItem[]>(initialKitabs);
   const [form, setForm] = useState<KitabForm>(emptyForm);
@@ -49,7 +59,17 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
   const [loading, setLoading] = useState(false);
 
   async function refresh() {
-    setKitabs(await api<KitabItem[]>("/api/kitab"));
+    const rows = await api<KitabItem[]>("/api/kitab");
+    // GET /api/kitab returns kelasId without the joined kelas name, so
+    // re-attach it from the page-level options to keep the badge visible.
+    setKitabs(
+      rows.map((r) => ({
+        ...r,
+        kelasNama: r.kelasId
+          ? (kelasOptions.find((k) => k.id === r.kelasId)?.namaKelas ?? r.kelasNama ?? null)
+          : null,
+      })),
+    );
   }
 
   function openCreate() {
@@ -65,6 +85,7 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
       jumlahHalaman: String(item.jumlahHalaman),
       deskripsi: item.deskripsi ?? "",
       status: item.status,
+      kelasId: item.kelasId ?? "",
     });
     setShowForm(true);
   }
@@ -82,6 +103,7 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
       jumlahHalaman: Number(form.jumlahHalaman),
       deskripsi: form.deskripsi.trim() || undefined,
       status: form.status,
+      ...(form.kelasId ? { kelasId: form.kelasId } : { kelasId: null }),
     };
     try {
       await toast.promise(
@@ -209,6 +231,21 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
               <option value="nonaktif">Nonaktif</option>
             </Select>
           </Field>
+
+          <Field label="Kelas Materi" htmlFor="kelas-kitab">
+            <Select
+              id="kelas-kitab"
+              value={form.kelasId}
+              onChange={(e) => setForm((f) => ({ ...f, kelasId: e.target.value }))}
+            >
+              <option value="">Tanpa kelas (diabaikan dari syarat)</option>
+              {kelasOptions.map((k) => (
+                <option key={k.id} value={k.id}>
+                  {k.namaKelas} (urutan {k.urutan})
+                </option>
+              ))}
+            </Select>
+          </Field>
         </form>
       </Dialog>
 
@@ -238,6 +275,7 @@ export default function KitabManager({ initialKitabs }: { initialKitabs: KitabIt
                 <Badge variant={item.status === "aktif" ? "success" : "secondary"}>
                   {item.status === "aktif" ? "Aktif" : "Nonaktif"}
                 </Badge>
+                {item.kelasNama ? <Badge variant="success">{item.kelasNama}</Badge> : null}
               </div>
 
               <div className="flex flex-wrap gap-2">

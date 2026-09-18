@@ -127,6 +127,10 @@ export const kelas = pgTable("kelas", {
   id: uuid("id").defaultRandom().primaryKey(),
   namaKelas: text("nama_kelas").notNull(),
   deskripsi: text("deskripsi"),
+  // Curriculum order of this kelas (A=1, B=2, ...). Ties count as equal.
+  urutan: integer("urutan").default(0).notNull(),
+  // Graduation kelas (e.g. Lulus Pra-nikah): members are exempt from khatam duty.
+  bebasSyarat: boolean("bebas_syarat").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -156,6 +160,8 @@ export const kitab = pgTable("kitab", {
   deskripsi: text("deskripsi"),
   // Soft delete: a nonaktif kitab still appears in santri progress.
   status: kitabStatusEnum("status").default("aktif").notNull(),
+  // Curriculum owner of this kitab. Null = unmapped, ignored by kenaikan logic.
+  kelasId: uuid("kelas_id").references(() => kelas.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -373,6 +379,7 @@ export const accountRelations = relations(account, ({ one }) => ({
 
 export const kelasRelations = relations(kelas, ({ many }) => ({
   santri: many(santri),
+  kitab: many(kitab),
 }));
 
 export const santriRelations = relations(santri, ({ one, many }) => ({
@@ -384,7 +391,11 @@ export const santriRelations = relations(santri, ({ one, many }) => ({
   pencapaian: many(pencapaian),
 }));
 
-export const kitabRelations = relations(kitab, ({ many }) => ({
+export const kitabRelations = relations(kitab, ({ one, many }) => ({
+  kelas: one(kelas, {
+    fields: [kitab.kelasId],
+    references: [kelas.id],
+  }),
   halaman: many(halaman),
 }));
 

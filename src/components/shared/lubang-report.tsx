@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import type { LubangKitab } from "@/lib/kenaikan";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,9 +16,10 @@ function rataVariant(rataRata: number): "success" | "warning" | "danger" {
 }
 
 /**
- * Per-kitab mastery report: one block per kitab with every page's average
- * across all santri (0% = everybody empty). A global toggle switches all
- * blocks between page order and emptiest-first (ties always break by page
+ * Per-kitab mastery report grouped by curriculum kelas. Each kitab is a
+ * collapsed accordion (native <details>); opening it lists every page's
+ * average across all santri (0% = everybody empty). A global toggle switches
+ * all blocks between page order and emptiest-first (ties break by page
  * number). Client component — data is fetched once on the server, sorting
  * happens in the browser.
  */
@@ -31,10 +33,20 @@ export function LubangReport({ data }: { data: LubangKitab[] }) {
       </Card>
     );
   }
+
+  // Group consecutive kitab by kelas (the helper already orders by kelas
+  // urutan then kitab name, so equal names are always adjacent).
+  const groups: { kelasNama: string; kitab: LubangKitab[] }[] = [];
+  for (const kitab of data) {
+    const last = groups[groups.length - 1];
+    if (last && last.kelasNama === kitab.kelasNama) last.kitab.push(kitab);
+    else groups.push({ kelasNama: kitab.kelasNama, kitab: [kitab] });
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-ink-secondary">Urutkan:</span>
+        <span className="text-sm text-ink-secondary">Urutkan halaman:</span>
         <Button
           type="button"
           size="sm"
@@ -53,43 +65,61 @@ export function LubangReport({ data }: { data: LubangKitab[] }) {
         </Button>
       </div>
 
-      {data.map((kitab) => {
-        const halaman =
-          mode === "kosong"
-            ? [...kitab.halaman].sort(
-                (a, b) => a.rataRata - b.rataRata || a.nomorHalaman - b.nomorHalaman,
-              )
-            : kitab.halaman;
-        return (
-          <Card key={kitab.kitabId} className="p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <h3 className="font-semibold text-ink">{kitab.namaKitab}</h3>
-                <Badge variant="secondary">{kitab.kelasNama}</Badge>
-              </div>
-              <Badge variant={rataVariant(kitab.rataRata)}>{kitab.rataRata}%</Badge>
-            </div>
-            <ul className="mt-2 divide-y divide-border">
-              {halaman.map((h) => (
-                <li
-                  key={h.nomorHalaman}
-                  className="flex items-center justify-between gap-3 py-2"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium text-ink">
-                      Halaman {h.nomorHalaman}
-                    </span>
-                    <span className="block text-xs text-ink-secondary">
-                      {h.dinilaiCount}/{h.totalSantri} santri dinilai
-                    </span>
-                  </span>
-                  <Badge variant={rataVariant(h.rataRata)}>{h.rataRata}%</Badge>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        );
-      })}
+      {groups.map((grup) => (
+        <section key={grup.kelasNama} className="space-y-3">
+          <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-secondary">
+            Materi {grup.kelasNama}
+          </h3>
+
+          {grup.kitab.map((kitab) => {
+            const halaman =
+              mode === "kosong"
+                ? [...kitab.halaman].sort(
+                    (a, b) => a.rataRata - b.rataRata || a.nomorHalaman - b.nomorHalaman,
+                  )
+                : kitab.halaman;
+            return (
+              <details
+                key={kitab.kitabId}
+                className="group rounded-2xl border border-border bg-surface shadow-sm"
+              >
+                <summary className="flex cursor-pointer list-none items-center gap-3 p-5 select-none [&::-webkit-details-marker]:hidden">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold text-ink">{kitab.namaKitab}</span>
+                      <Badge variant="secondary">{kitab.halaman.length} halaman</Badge>
+                    </div>
+                  </div>
+                  <Badge variant={rataVariant(kitab.rataRata)}>{kitab.rataRata}%</Badge>
+                  <ChevronDown
+                    className="h-5 w-5 shrink-0 text-ink-secondary transition-transform group-open:rotate-180"
+                    aria-hidden
+                  />
+                </summary>
+
+                <ul className="divide-y divide-border border-t border-border px-5">
+                  {halaman.map((h) => (
+                    <li
+                      key={h.nomorHalaman}
+                      className="flex items-center justify-between gap-3 py-2"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-ink">
+                          Halaman {h.nomorHalaman}
+                        </span>
+                        <span className="block text-xs text-ink-secondary">
+                          {h.dinilaiCount}/{h.totalSantri} santri dinilai
+                        </span>
+                      </span>
+                      <Badge variant={rataVariant(h.rataRata)}>{h.rataRata}%</Badge>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            );
+          })}
+        </section>
+      ))}
     </div>
   );
 }

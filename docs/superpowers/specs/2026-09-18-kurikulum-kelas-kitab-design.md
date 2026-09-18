@@ -64,7 +64,7 @@ Kartu "Syarat naik kelas" (baru, di halaman detail santri yang sudah ada — `mo
 - Mobile-first mengikuti DESIGN.md (card `rounded-2xl`, badge, progress existing). Wali: kartu sama, read-only, ownership check existing tetap berlaku.
 
 Laporan lubang (komponen shared baru, dipakai seksi dashboard admin + halaman baru `/ustadz/laporan` dengan nav "Laporan"):
-- Satu blok per kitab aktif yang terpetakan (urut urutan kelas pemilik lalu nama kitab). Tiap blok: semua halaman + toggle global Nomor halaman | Paling kosong.
+- Dikelompokkan per kelas (judul "Materi {kelas}"); tiap kitab berupa accordion tertutup default berisi semua halaman + toggle global Nomor halaman | Paling kosong.
 - Empty state global bila belum ada kitab terpetakan ("Belum ada materi yang dipetakan ke kelas."). Wali tidak melihat laporan ini.
 
 ## 6. Aturan syarat naik (formal)

@@ -8,7 +8,7 @@ Tanggal: 2026-09-18 | Status: disetujui user (semua 5 seksi) | Pendekatan: 1 (FK
 
 Dua tujuan laporan:
 1. Per santri: kurang apa saja agar bisa naik ke kelas berikutnya (kitab + halaman yang belum khatam).
-2. Agregat: untuk tiap materi kelas, 100 halaman yang paling kosong (kitab apa, halaman berapa) agar ustadz tahu bottleneck.
+2. Agregat: untuk tiap kitab, rata-rata penguasaan per halaman dari semua santri, agar ustadz tahu lubang terbesar untuk sesi pengajian tambahan.
 
 ## 2. Keputusan yang disepakati
 
@@ -19,7 +19,7 @@ Dua tujuan laporan:
 - Kelas `bebas_syarat = true` (mis. kelas Lulus untuk pra-nikah): penghuninya bebas kewajiban — status selalu "Lulus / tidak ada kewajiban" — dan dikecualikan dari penyebut laporan lubang.
 - Kitab **nonaktif tidak dihitung** sebagai syarat (tetap tampil di detail dengan badge, konsisten PRD tampil) supaya admin bisa mempensiunkan materi tanpa mengunci kelulusan.
 - Santri tanpa kelas: tanpa syarat + banner "Belum ditempatkan di kelas".
-- Laporan lubang: penyebut = semua santri aktif kecuali kelas lulus (termasuk santri tanpa kelas); top 100 per materi kelas, urut % khatam menaik, seri → nama kitab lalu nomor halaman.
+- Laporan lubang: satu blok per kitab (aktif + terpetakan); tiap halaman menampilkan rata-rata semua santri aktif kecuali kelas lulus (belum dinilai = 0); toggle global Nomor halaman | Paling kosong, seri nilai → nomor halaman.
 - Akses: mapping/urutan = admin saja. Kartu sisa: admin/ustadz semua santri, wali hanya anaknya. Laporan lubang: admin/ustadz saja, wali 403.
 
 ## 3. Arsitektur & aliran data
@@ -28,7 +28,7 @@ Mengikuti pola yang sudah ada (`santri-progress.ts`, `admin-stats.ts`): agregasi
 
 - Helper baru `src/lib/kenaikan.ts`:
   - `getKenaikanStatus(santriId)` → scope kumulatif + status + daftar kitab belum khatam + halaman belum 100%. Dipakai kartu sisa di detail santri admin/ustadz/wali (server component, reuse `getSantriProgressData` sebagai basis agar angka konsisten).
-  - `getLubangReport()` → per materi kelas: top 100 halaman + `khatamCount`/`totalSantri`/`persenKhatam`. Dipakai seksi dashboard admin + halaman `/ustadz/laporan` (komponen shared yang sama).
+  - `getLubangReport()` → per kitab: semua halaman + `rataRata`/`dinilaiCount`/`totalSantri` + rata-rata kitab. Dipakai seksi dashboard admin + halaman `/ustadz/laporan` (komponen shared yang sama).
 - CRUD existing diperluas (bukan route baru): `POST/PATCH /api/kelas` terima `urutan` + `bebas_syarat`; `POST/PATCH /api/kitab` terima `kelas_id` nullable.
 - Hapus kelas yang masih dipetakan kitab → ditolak 400 dengan pesan Indonesia (restrict, bukan set-null diam-diam).
 
@@ -64,8 +64,8 @@ Kartu "Syarat naik kelas" (baru, di halaman detail santri yang sudah ada — `mo
 - Mobile-first mengikuti DESIGN.md (card `rounded-2xl`, badge, progress existing). Wali: kartu sama, read-only, ownership check existing tetap berlaku.
 
 Laporan lubang (komponen shared baru, dipakai seksi dashboard admin + halaman baru `/ustadz/laporan` dengan nav "Laporan"):
-- Satu blok per materi kelas yang punya ≥1 kitab aktif terpetakan, diurut `urutan` kelas. Tiap blok: top 100 baris "nama kitab + halaman ke-N + X/Y khatam • Z belum".
-- Empty state per blok bila semua sudah khatam ("Semua materi kelas ini sudah khatam"). Wali tidak melihat laporan ini.
+- Satu blok per kitab aktif yang terpetakan (urut urutan kelas pemilik lalu nama kitab). Tiap blok: semua halaman + toggle global Nomor halaman | Paling kosong.
+- Empty state global bila belum ada kitab terpetakan ("Belum ada materi yang dipetakan ke kelas."). Wali tidak melihat laporan ini.
 
 ## 6. Aturan syarat naik (formal)
 
@@ -85,12 +85,12 @@ Kelas D kosong (tanpa kitab, U=4): scope = semua kitab berurutan ≤ 4 = 20 kita
 ## 7. Error handling
 
 - API: 400 validasi zod (urutan negatif/bukan integer, kelas_id bukan UUID), 404 kelas tidak ada, 400 hapus kelas terpakai, 403 wali/non-admin untuk tulis mapping & laporan lubang. Semua pesan Indonesia via pola `toast` existing.
-- UI: dropdown kelas kosong → "Belum ada kelas, buat dulu"; materi kelas tanpa kitab tidak dibuatkan blok; penyebut laporan 0 santri → blok menampilkan empty state (hindari bagi-nol).
+- UI: dropdown kelas kosong → "Belum ada kelas, buat dulu"; kitab tak terpetakan/nonaktif tidak dibuatkan blok; penyebut laporan 0 santri → rata-rata 0 (hindari bagi-nol).
 
 ## 8. Testing & rollout
 
 - `npm run lint` + `npm run build` hijau (repo belum punya test runner).
-- Manual + skrip tsx sementara (read-only, hapus setelah dipakai, pola Fase 7): mapping kumulatif benar (santri B wajib 1–10), khatam strict 100 (99 = belum), kelas lulus bebas syarat + keluar dari penyebut, urutan top-100 (% khatam menaik, seri nama kitab + nomor halaman), guard (wali hanya anaknya; wali 403 laporan lubang & POST mapping; non-admin tulis ditolak), hapus kelas terpakai ditolak.
+- Manual + skrip tsx sementara (read-only, hapus setelah dipakai, pola Fase 7): mapping kumulatif benar (santri B wajib 1–10), khatam strict 100 (99 = belum), kelas lulus bebas syarat + keluar dari penyebut, urutan toggle dua mode (seri → nomor halaman), guard (wali hanya anaknya; wali 403 laporan lubang & POST mapping; non-admin tulis ditolak), hapus kelas terpakai ditolak.
 - Rollout: migrasi additive; update `docs/SCHEMA.md`, `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/IMPLEMENTATION.md` (fase baru).
 
 ## 9. Batasan v1 (non-goals)

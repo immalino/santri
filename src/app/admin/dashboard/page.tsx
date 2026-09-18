@@ -111,7 +111,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-ink">Halaman Paling Kosong per Materi Kelas</h2>
+        <h2 className="text-lg font-semibold text-ink">Rata-rata Materi per Kitab</h2>
         <LubangReport data={lubang} />
       </section>
     </div>

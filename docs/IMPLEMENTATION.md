@@ -638,7 +638,7 @@
 
 ## 10g. Fase 13 — Kurikulum Kelas–Kitab + Laporan Kenaikan & Lubang
 
-**Tujuan:** Setiap kitab dipetakan ke satu kelas sebagai pemilik materi (kurikulum berjenjang via `urutan` + kelas lulus via `bebas_syarat`); santri melihat sisa syarat naik kelas (kumulatif, khatam strict 100%) dan admin/ustadz melihat 100 halaman paling kosong per materi kelas.
+**Tujuan:** Setiap kitab dipetakan ke satu kelas sebagai pemilik materi (kurikulum berjenjang via `urutan` + kelas lulus via `bebas_syarat`); santri melihat sisa syarat naik kelas (kumulatif, khatam strict 100%) dan admin/ustadz melihat rata-rata per halaman per kitab.
 
 ### Task
 
@@ -647,10 +647,10 @@
 - [x] **13.3** API kelas (`src/app/api/kelas/route.ts`, `[id]/route.ts`): GET urut `urutan` lalu nama (+`urutan`, `bebasSyarat`, `jumlahSantri`); POST/PATCH terima `urutan`/`bebasSyarat`; DELETE 400 bila masih ada santri atau kitab yang dipetakan.
 - [x] **13.4** API kitab (`src/app/api/kitab/route.ts`, `[id]/route.ts`): respons memuat `kelasId`; tulis `kelas_id` dengan cek keberadaan kelas (non-null yang tidak ada → 404 "Kelas tidak ditemukan.").
 - [x] **13.5** Helper `getKenaikanStatus` (`src/lib/kenaikan.ts`): sisa khatam kumulatif per santri (kitab aktif milik kelas berurutan ≤ kelas santri; kitab null/nonaktif/milik kelas lulus dikecualikan; halaman khatam hanya bila 100%).
-- [x] **13.6** Helper `getLubangReport` (`src/lib/kenaikan.ts`): top-100 halaman paling kosong per materi kelas (penyebut santri aktif non-lulus; urut % khatam menaik).
+- [x] **13.6** Helper `getLubangReport` (`src/lib/kenaikan.ts`): rata-rata per halaman per kitab (penyebut santri aktif non-lulus, belum dinilai = 0; tanpa limit).
 - [x] **13.7** UI admin pemetaan (`kelas-manager.tsx`, `kitab-manager.tsx` + halaman `/admin/kelas`, `/admin/kitab`): atur `urutan`/`bebasSyarat` dan petakan/lepas `kelas_id` kitab.
 - [x] **13.8** Kartu "Syarat Naik Kelas" (`KenaikanCard`) di 3 halaman pencapaian (`/admin|ustadz|wali/santri/[id]/pencapaian`): status satu baris + expand kitab/halaman belum khatam; wali read-only.
-- [x] **13.9** Laporan lubang (`LubangReport` + `/ustadz/laporan` + seksi dashboard admin + nav ustadz "Laporan"): blok per materi kelas + top-100 + empty state.
+- [x] **13.9** Laporan lubang (`LubangReport` + `/ustadz/laporan` + seksi dashboard admin + nav ustadz "Laporan"): blok per kitab + toggle Nomor halaman | Paling kosong + empty state.
 
 ### Definition of Done (Fase 13)
 

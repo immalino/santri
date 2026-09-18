@@ -135,25 +135,25 @@ export async function getKenaikanStatus(santriId: string): Promise<KenaikanStatu
 }
 
 export interface LubangHalaman {
-  kitabId: string;
-  namaKitab: string;
   nomorHalaman: number;
-  /** Santri (denominator) dengan nilai 100 di halaman ini. */
-  khatamCount: number;
+  /** Mean persentase across denominator santri (ungraded counts as 0), rounded. */
+  rataRata: number;
+  /** Denominator santri with any score on this page. */
+  dinilaiCount: number;
   totalSantri: number;
-  /** Math.round(khatamCount / totalSantri * 100), 0 bila penyebut 0. */
-  persenKhatam: number;
 }
 
-export interface LubangKelas {
-  kelasId: string;
-  namaKelas: string;
-  urutan: number;
-  /** Top 100 halaman paling kosong milik kitab kelas ini. */
+export interface LubangKitab {
+  kitabId: string;
+  namaKitab: string;
+  kelasNama: string;
+  /** Mean of page averages, rounded. */
+  rataRata: number;
+  /** All pages in natural order; the client toggle sorts them. */
   halaman: LubangHalaman[];
 }
 
-export async function getLubangReport(): Promise<LubangKelas[]> {
+export async function getLubangReport(): Promise<LubangKitab[]> {
   const kelasRows = await db.query.kelas.findMany({
     columns: { id: true, namaKelas: true, urutan: true, bebasSyarat: true },
     orderBy: (k, { asc }) => [asc(k.urutan), asc(k.namaKelas)],
@@ -176,7 +176,6 @@ export async function getLubangReport(): Promise<LubangKelas[]> {
     const pemilik = kelasRows.find((k) => k.id === kb.kelasId);
     if (pemilik && !pemilik.bebasSyarat) pemilikByKitab.set(kb.id, pemilik);
   }
-  const namaKitabById = new Map(kitabRows.map((k) => [k.id, k.namaKitab]));
 
   const halamanRows =
     pemilikByKitab.size > 0
@@ -186,7 +185,9 @@ export async function getLubangReport(): Promise<LubangKelas[]> {
         })
       : [];
 
-  const khatamByHalaman = new Map<string, number>();
+  // Sum + graded-count per halaman within the denominator (ungraded = 0).
+  const sumByHalaman = new Map<string, number>();
+  const dinilaiByHalaman = new Map<string, number>();
   if (halamanRows.length > 0 && denomIds.size > 0) {
     const nilai = await db
       .select({
@@ -202,43 +203,50 @@ export async function getLubangReport(): Promise<LubangKelas[]> {
         ),
       );
     for (const n of nilai) {
-      if (n.persentase === 100 && denomIds.has(n.santriId)) {
-        khatamByHalaman.set(n.halamanId, (khatamByHalaman.get(n.halamanId) ?? 0) + 1);
-      }
+      if (!denomIds.has(n.santriId)) continue;
+      sumByHalaman.set(n.halamanId, (sumByHalaman.get(n.halamanId) ?? 0) + n.persentase);
+      dinilaiByHalaman.set(n.halamanId, (dinilaiByHalaman.get(n.halamanId) ?? 0) + 1);
     }
   }
 
   const totalSantri = denomIds.size;
-  const byKelas = new Map<string, LubangHalaman[]>();
+  const halamanByKitab = new Map<string, LubangHalaman[]>();
   for (const h of halamanRows) {
-    const pemilik = pemilikByKitab.get(h.kitabId)!;
-    const khatamCount = khatamByHalaman.get(h.id) ?? 0;
-    const list = byKelas.get(pemilik.id) ?? [];
+    const sum = sumByHalaman.get(h.id) ?? 0;
+    const list = halamanByKitab.get(h.kitabId) ?? [];
     list.push({
-      kitabId: h.kitabId,
-      namaKitab: namaKitabById.get(h.kitabId) ?? "?",
       nomorHalaman: h.nomorHalaman,
-      khatamCount,
+      rataRata: totalSantri > 0 ? Math.round(sum / totalSantri) : 0,
+      dinilaiCount: dinilaiByHalaman.get(h.id) ?? 0,
       totalSantri,
-      persenKhatam: totalSantri > 0 ? Math.round((khatamCount / totalSantri) * 100) : 0,
     });
-    byKelas.set(pemilik.id, list);
+    halamanByKitab.set(h.kitabId, list);
+  }
+  for (const list of halamanByKitab.values()) {
+    list.sort((a, b) => a.nomorHalaman - b.nomorHalaman);
   }
 
-  return kelasRows
-    .filter((k) => byKelas.has(k.id))
-    .map((k) => ({
-      kelasId: k.id,
-      namaKelas: k.namaKelas,
-      urutan: k.urutan,
-      halaman: byKelas
-        .get(k.id)!
-        .sort(
-          (a, b) =>
-            a.persenKhatam - b.persenKhatam ||
-            a.namaKitab.localeCompare(b.namaKitab, "id") ||
-            a.nomorHalaman - b.nomorHalaman,
-        )
-        .slice(0, 100),
-    }));
+  // Kitab ordered by owner urutan then name (stable base order for the toggle).
+  const scoped = kitabRows
+    .filter((kb) => pemilikByKitab.has(kb.id))
+    .sort((a, b) => {
+      const ua = pemilikByKitab.get(a.id)!.urutan;
+      const ub = pemilikByKitab.get(b.id)!.urutan;
+      return ua !== ub ? ua - ub : a.namaKitab.localeCompare(b.namaKitab, "id");
+    });
+
+  return scoped.map((kb) => {
+    const halaman = halamanByKitab.get(kb.id) ?? [];
+    const rataRata =
+      halaman.length > 0
+        ? Math.round(halaman.reduce((s, h) => s + h.rataRata, 0) / halaman.length)
+        : 0;
+    return {
+      kitabId: kb.id,
+      namaKitab: kb.namaKitab,
+      kelasNama: pemilikByKitab.get(kb.id)!.namaKelas,
+      rataRata,
+      halaman,
+    };
+  });
 }

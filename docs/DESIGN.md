@@ -55,7 +55,7 @@ Tidak ada sidebar kompleks seperti referensi — cukup 3-4 menu utama per role d
 - Halaman Input: pilih santri (search/dropdown) → pilih kitab → **grid kotak halaman** — tiap kotak menampilkan nomor halaman, isi warna kotak (gradasi hijau→gold) setinggi persentase sehingga "penuh/tidaknya" kotak = progres halaman itu; bulk set: tap pilih satu, tekan lama & seret pilih banyak, lalu set semua halaman terpilih ke satu nilai (preset/input kustom); tombol Simpan sticky di bawah (mobile)
 - Halaman Santri (Fase 8): daftar santri (kartu + rata-rata keseluruhan) → **detail santri** (card kitab editable, link ke grid nilai) → **grid nilai per halaman** (pola sama dengan Input Nilai, nilai lama ter-preload)
 - Halaman Kegiatan (Fase 10): sama seperti admin (CRUD + input absensi)
-- Halaman Laporan: blok per materi kelas (top-100 halaman paling kosong, urut % khatam menaik) + empty state bila belum ada pemetaan
+- Halaman Laporan: blok per kitab (rata-rata per halaman dari semua santri) + toggle Nomor halaman | Paling kosong + empty state bila belum ada pemetaan
 - Halaman Pencapaian Santri: kartu "Syarat Naik Kelas" di atas progress (status satu baris + expand kitab/halaman belum khatam)
 
 ### Wali Santri

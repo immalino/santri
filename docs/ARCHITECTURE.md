@@ -30,7 +30,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
     /(auth)
       /login
     /admin                -> prefix role (keputusan Fase 2, bukan route group)
-      /dashboard          -> rekap semua santri + seksi lubang (100 halaman paling kosong per materi kelas)
+      /dashboard          -> rekap semua santri + seksi laporan per kitab
       /kitab              -> CRUD kitab (+ auto-generate halaman)
       /santri             -> CRUD santri (+ /[id] detail editable, /[id]/kitab/[kitabId] grid nilai)
       /kegiatan           -> CRUD kegiatan (+ /[id] peserta & sesi, /[id]/sesi/[sesiId] input absensi)
@@ -42,7 +42,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
       /input              -> pilih santri -> pilih kitab -> input persentase
       /santri             -> daftar santri (+ /[id] detail editable, /[id]/kitab/[kitabId] grid nilai)
       /kegiatan           -> CRUD kegiatan (+ /[id] peserta & sesi, /[id]/sesi/[sesiId] input absensi)
-      /laporan            -> 100 halaman paling kosong per materi kelas
+      /laporan            -> rata-rata per halaman per kitab + toggle urutan
       /riwayat            -> riwayat penilaian
       /pengaturan         -> ganti password sendiri
     /wali

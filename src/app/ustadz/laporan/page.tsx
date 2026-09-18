@@ -6,7 +6,7 @@ export const metadata = {
   title: "Laporan Materi | e-Santri",
 };
 
-/** Ustadz lubang report: top-100 emptiest pages per curriculum kelas. */
+/** Ustadz lubang report: per-kitab page averages across all santri. */
 export default async function UstadzLaporanPage() {
   await requireRole(["ustadz"]);
   const lubang = await getLubangReport();
@@ -16,7 +16,7 @@ export default async function UstadzLaporanPage() {
       <div>
         <h1 className="text-2xl font-semibold text-ink">Laporan Materi</h1>
         <p className="mt-1 text-sm text-ink-secondary">
-          100 halaman paling kosong untuk setiap materi kelas.
+          Rata-rata penguasaan per halaman dari semua santri.
         </p>
       </div>
       <LubangReport data={lubang} />

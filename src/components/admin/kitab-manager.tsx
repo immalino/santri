@@ -68,6 +68,11 @@ function BagianEditor({
   const [dari, setDari] = useState("");
   const [sampai, setSampai] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editingBagianId, setEditingBagianId] = useState<string | null>(null);
+  const [editKelasId, setEditKelasId] = useState("");
+  const [editDari, setEditDari] = useState("");
+  const [editSampai, setEditSampai] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
 
   async function handleAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -106,9 +111,54 @@ function BagianEditor({
         success: "Bagian berhasil dihapus.",
         error: (err) => (err instanceof Error ? err.message : "Gagal menghapus bagian."),
       });
+      if (editingBagianId === bagianId) cancelEditBagian();
       await onChanged();
     } catch {
       // Error sudah ditampilkan lewat toast.
+    }
+  }
+
+  function openEditBagian(b: KitabBagianItem) {
+    setEditingBagianId(b.id);
+    setEditKelasId(b.kelasId);
+    setEditDari(String(b.halamanDari));
+    setEditSampai(String(b.halamanSampai));
+  }
+
+  function cancelEditBagian() {
+    setEditingBagianId(null);
+    setEditKelasId("");
+    setEditDari("");
+    setEditSampai("");
+  }
+
+  async function handleUpdate(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingBagianId) return;
+    setEditSaving(true);
+    try {
+      await toast.promise(
+        api(`/api/kitab/bagian/${editingBagianId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            kelasId: editKelasId,
+            halamanDari: Number(editDari),
+            halamanSampai: Number(editSampai),
+          }),
+        }),
+        {
+          loading: "Menyimpan perubahan...",
+          success: "Bagian berhasil diperbarui.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal memperbarui bagian."),
+        },
+      );
+      cancelEditBagian();
+      await onChanged();
+    } catch {
+      // Error sudah ditampilkan lewat toast (termasuk
+      // "Rentang bertabrakan dengan bagian lain kitab ini.").
+    } finally {
+      setEditSaving(false);
     }
   }
 
@@ -121,24 +171,96 @@ function BagianEditor({
         </p>
       ) : (
         <ul className="space-y-1.5">
-          {kitab.bagian.map((b) => (
-            <li
-              key={b.id}
-              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs"
-            >
-              <span className="min-w-0 truncate text-ink">
-                hal {b.halamanDari}–{b.halamanSampai} • {b.kelasNama ?? "Kelas dihapus"}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDelete(b.id)}
+          {kitab.bagian.map((b) =>
+            editingBagianId === b.id ? (
+              <li
+                key={b.id}
+                className="rounded-lg border border-border bg-surface px-2.5 py-1.5"
               >
-                Hapus
-              </Button>
-            </li>
-          ))}
+                <form onSubmit={handleUpdate} className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Dari" htmlFor={`edit-bagian-dari-${b.id}`}>
+                      <Input
+                        id={`edit-bagian-dari-${b.id}`}
+                        type="number"
+                        min={1}
+                        max={kitab.jumlahHalaman}
+                        step={1}
+                        required
+                        value={editDari}
+                        onChange={(e) => setEditDari(e.target.value)}
+                      />
+                    </Field>
+                    <Field label="Sampai" htmlFor={`edit-bagian-sampai-${b.id}`}>
+                      <Input
+                        id={`edit-bagian-sampai-${b.id}`}
+                        type="number"
+                        min={1}
+                        max={kitab.jumlahHalaman}
+                        step={1}
+                        required
+                        value={editSampai}
+                        onChange={(e) => setEditSampai(e.target.value)}
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Kelas" htmlFor={`edit-bagian-kelas-${b.id}`}>
+                    <Select
+                      id={`edit-bagian-kelas-${b.id}`}
+                      value={editKelasId}
+                      onChange={(e) => setEditKelasId(e.target.value)}
+                    >
+                      <option value="">Pilih kelas</option>
+                      {kelasOptions.map((k) => (
+                        <option key={k.id} value={k.id}>
+                          {k.namaKelas} (urutan {k.urutan})
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={editSaving || !editKelasId || !editDari || !editSampai}
+                    >
+                      {editSaving ? "Menyimpan..." : "Simpan"}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={cancelEditBagian}>
+                      Batal
+                    </Button>
+                  </div>
+                </form>
+              </li>
+            ) : (
+              <li
+                key={b.id}
+                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs"
+              >
+                <span className="min-w-0 truncate text-ink">
+                  hal {b.halamanDari}–{b.halamanSampai} • {b.kelasNama ?? "Kelas dihapus"}
+                </span>
+                <span className="flex shrink-0 gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openEditBagian(b)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(b.id)}
+                  >
+                    Hapus
+                  </Button>
+                </span>
+              </li>
+            ),
+          )}
         </ul>
       )}
       <form onSubmit={handleAdd} className="space-y-2">

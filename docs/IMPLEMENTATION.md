@@ -679,7 +679,7 @@
 ### Task
 
 - [x] **14.1** Skema DB (`src/db/schema.ts`): tabel `kitab_bagian` (`id` uuid PK, `kitab_id` uuid FK → `kitab.id` **cascade** + index, `kelas_id` uuid FK → `kelas.id` + index, `halaman_dari` + `halaman_sampai` integer, `created_at`/`updated_at`) + relasi Drizzle.
-- [x] **14.2** Validasi (`src/lib/validations.ts`): `kitabBagianInputSchema` (`kitabId`/`kelasId` UUID, `halamanDari` ≥ 1, `halamanSampai` ≥ `halamanDari`) & `kitabBagianUpdateSchema` (parsial); overlap antar-bagian satu kitab + batas `halaman_sampai ≤ jumlah_halaman` dicek di handler (400 bila tabrakan/melebihi, 404 bila kitab/kelas tidak ada).
+- [x] **14.2** Validasi (`src/lib/validations.ts`): `kitabBagianInputSchema` (`kelasId` UUID, `halamanDari` ≥ 1, `halamanSampai` ≥ `halamanDari`; `kitabId` dari path, bukan body) & `kitabBagianUpdateSchema` (parsial); overlap antar-bagian satu kitab + batas `halaman_sampai ≤ jumlah_halaman` dicek di handler (400 bila tabrakan/melebihi, 404 bila kitab/kelas tidak ada).
 - [x] **14.3** API admin-only (`requireApiRole(["admin"])`): `GET/POST /api/kitab/[id]/bagian` (list + tambah), `PATCH/DELETE /api/kitab/bagian/[bagianId]` (edit/hapus).
 - [x] **14.4** Guard hapus kelas (`src/app/api/kelas/[id]/route.ts`): DELETE 400 bila kelas masih dimiliki bagian kitab (selain cek santri & pemetaan kitab Fase 13).
 - [x] **14.5** Helper `getKenaikanStatus` (`src/lib/kenaikan.ts`): scope per bagian (`bagianId: string | null`, `labelRentang: string | null`); kitab berbagian → satu entri per bagian milik kelas berurutan ≤ kelas santri; kitab tanpa bagian → fallback virtual full (pemilik = `kitab.kelas_id`).

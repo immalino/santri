@@ -17,7 +17,11 @@ export interface KenaikanHalamanBelum {
 
 export interface KenaikanKitabKurang {
   kitabId: string;
+  /** null = kitab tanpa bagian (fallback virtual full). */
+  bagianId: string | null;
   namaKitab: string;
+  /** "hal 1-300" atau null bila full kitab. */
+  labelRentang: string | null;
   kelasNama: string;
   kurangHalaman: number;
   totalHalaman: number;
@@ -47,7 +51,7 @@ export async function getKenaikanStatus(santriId: string): Promise<KenaikanStatu
     orderBy: (k, { asc }) => [asc(k.urutan), asc(k.namaKelas)],
   });
   const kitabRows = await db.query.kitab.findMany({
-    columns: { id: true, status: true, kelasId: true },
+    columns: { id: true, namaKitab: true, status: true, kelasId: true },
   });
 
   const santriKelas = kelasRows.find((k) => k.namaKelas === data.kelasNama) ?? null;
@@ -69,47 +73,68 @@ export async function getKenaikanStatus(santriId: string): Promise<KenaikanStatu
   // Cumulative scope: active kitab whose kelas.urutan <= U, excluding kitab
   // owned by exempt (bebas) kelas and unmapped kitab.
   const urutanByKelas = new Map(kelasRows.map((k) => [k.id, k]));
-  const scopeKitabIds = new Set(
-    kitabRows
-      .filter((kb) => {
-        if (kb.status !== "aktif" || !kb.kelasId) return false;
-        const pemilik = urutanByKelas.get(kb.kelasId);
-        if (!pemilik || pemilik.bebasSyarat) return false;
-        return pemilik.urutan <= santriKelas.urutan;
-      })
-      .map((kb) => kb.id),
-  );
-
-  const namaKelasByKitab = new Map<string, { nama: string; urutan: number }>();
+  const bagianRows = await db.query.kitabBagian.findMany({
+    columns: { id: true, kitabId: true, kelasId: true, halamanDari: true, halamanSampai: true },
+  });
+  const bagianByKitab = new Map<string, typeof bagianRows>();
+  for (const b of bagianRows) {
+    const list = bagianByKitab.get(b.kitabId) ?? [];
+    list.push(b);
+    bagianByKitab.set(b.kitabId, list);
+  }
+  interface ScopeBagian { kitabId: string; bagianId: string | null; dari: number; sampai: number; kelasNama: string; urutan: number }
+  const scope: ScopeBagian[] = [];
   for (const kb of kitabRows) {
-    if (!kb.kelasId) continue;
-    const pemilik = urutanByKelas.get(kb.kelasId);
-    if (pemilik) namaKelasByKitab.set(kb.id, { nama: pemilik.namaKelas, urutan: pemilik.urutan });
+    if (kb.status !== "aktif") continue;
+    const daftar = bagianByKitab.get(kb.id) ?? [];
+    if (daftar.length === 0) {
+      if (!kb.kelasId) continue;
+      const pemilik = urutanByKelas.get(kb.kelasId);
+      if (!pemilik || pemilik.bebasSyarat || pemilik.urutan > santriKelas.urutan) continue;
+      const jumlah = data.kitab.find((k) => k.kitabId === kb.id)?.jumlahHalaman ?? 0;
+      scope.push({ kitabId: kb.id, bagianId: null, dari: 1, sampai: jumlah, kelasNama: pemilik.namaKelas, urutan: pemilik.urutan });
+    } else {
+      for (const b of daftar) {
+        const pemilik = urutanByKelas.get(b.kelasId);
+        if (!pemilik || pemilik.bebasSyarat || pemilik.urutan > santriKelas.urutan) continue;
+        scope.push({ kitabId: kb.id, bagianId: b.id, dari: b.halamanDari, sampai: b.halamanSampai, kelasNama: pemilik.namaKelas, urutan: pemilik.urutan });
+      }
+    }
   }
 
   const kitabBelum: KenaikanKitabKurang[] = [];
-  for (const k of data.kitab) {
-    if (!scopeKitabIds.has(k.kitabId)) continue;
-    const halamanBelum = k.halaman
-      .filter((h) => h.persentase !== 100)
+  const urutanByKey = new Map<string, number>();
+  const dariByKey = new Map<string, number>();
+  for (const s of scope) {
+    const prog = data.kitab.find((k) => k.kitabId === s.kitabId);
+    if (!prog) continue;
+    const halamanBelum = prog.halaman
+      .filter((h) => h.persentase !== 100 && h.nomorHalaman >= s.dari && h.nomorHalaman <= s.sampai)
       .map((h) => ({ nomorHalaman: h.nomorHalaman, persentase: h.persentase }))
       .sort((a, b) => a.nomorHalaman - b.nomorHalaman);
     if (halamanBelum.length === 0) continue;
-    const pemilik = namaKelasByKitab.get(k.kitabId)!;
+    const key = s.bagianId ?? s.kitabId;
+    urutanByKey.set(key, s.urutan);
+    dariByKey.set(key, s.dari);
     kitabBelum.push({
-      kitabId: k.kitabId,
-      namaKitab: k.namaKitab,
-      kelasNama: pemilik.nama,
+      kitabId: s.kitabId,
+      bagianId: s.bagianId,
+      namaKitab: prog.namaKitab,
+      labelRentang: s.bagianId ? `hal ${s.dari}-${s.sampai}` : null,
+      kelasNama: s.kelasNama,
       kurangHalaman: halamanBelum.length,
-      totalHalaman: k.jumlahHalaman,
+      totalHalaman: s.sampai - s.dari + 1,
       halamanBelum,
     });
   }
-  kitabBelum.sort((a, b) =>
-    namaKelasByKitab.get(a.kitabId)!.urutan !== namaKelasByKitab.get(b.kitabId)!.urutan
-      ? namaKelasByKitab.get(a.kitabId)!.urutan - namaKelasByKitab.get(b.kitabId)!.urutan
-      : a.namaKitab.localeCompare(b.namaKitab, "id"),
-  );
+  kitabBelum.sort((a, b) => {
+    const ua = urutanByKey.get(a.bagianId ?? a.kitabId)!;
+    const ub = urutanByKey.get(b.bagianId ?? b.kitabId)!;
+    if (ua !== ub) return ua - ub;
+    const nama = a.namaKitab.localeCompare(b.namaKitab, "id");
+    if (nama !== 0) return nama;
+    return dariByKey.get(a.bagianId ?? a.kitabId)! - dariByKey.get(b.bagianId ?? b.kitabId)!;
+  });
 
   const kurangHalaman = kitabBelum.reduce((s, k) => s + k.kurangHalaman, 0);
   if (kitabBelum.length === 0) {

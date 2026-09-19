@@ -240,3 +240,22 @@ export const changePasswordSchema = z
     message: "Konfirmasi password tidak cocok.",
     path: ["confirmPassword"],
   });
+
+// --- Kitab bagian (rentang halaman per kelas) --------------------------------
+
+// NOTE: Zod v4 forbids .partial() on schemas with refinements, so the base
+// object is declared separately; input + update add their own refinement.
+const kitabBagianBaseSchema = z.object({
+  kelasId: z.string().uuid("Kelas tidak valid."),
+  halamanDari: z.coerce.number().int("Halaman harus bilangan bulat.").min(1, "Halaman minimal 1."),
+  halamanSampai: z.coerce.number().int("Halaman harus bilangan bulat.").min(1, "Halaman minimal 1."),
+});
+
+export const kitabBagianInputSchema = kitabBagianBaseSchema.refine((d) => d.halamanDari <= d.halamanSampai, {
+  message: "Halaman awal tidak boleh lebih besar dari halaman akhir.",
+  path: ["halamanSampai"],
+});
+export const kitabBagianUpdateSchema = kitabBagianBaseSchema.partial().refine(
+  (d) => d.halamanDari === undefined || d.halamanSampai === undefined || d.halamanDari <= d.halamanSampai,
+  { message: "Halaman awal tidak boleh lebih besar dari halaman akhir.", path: ["halamanSampai"] },
+);

@@ -169,6 +169,30 @@ export const kitab = pgTable("kitab", {
     .notNull(),
 });
 
+export const kitabBagian = pgTable(
+  "kitab_bagian",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    kitabId: uuid("kitab_id")
+      .references(() => kitab.id, { onDelete: "cascade" })
+      .notNull(),
+    kelasId: uuid("kelas_id")
+      .references(() => kelas.id)
+      .notNull(),
+    halamanDari: integer("halaman_dari").notNull(),
+    halamanSampai: integer("halaman_sampai").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("idx_kitab_bagian_kitab_id").on(table.kitabId),
+    index("idx_kitab_bagian_kelas_id").on(table.kelasId),
+  ],
+);
+
 export const halaman = pgTable(
   "halaman",
   {
@@ -380,6 +404,7 @@ export const accountRelations = relations(account, ({ one }) => ({
 export const kelasRelations = relations(kelas, ({ many }) => ({
   santri: many(santri),
   kitab: many(kitab),
+  kitabBagian: many(kitabBagian),
 }));
 
 export const santriRelations = relations(santri, ({ one, many }) => ({
@@ -397,6 +422,12 @@ export const kitabRelations = relations(kitab, ({ one, many }) => ({
     references: [kelas.id],
   }),
   halaman: many(halaman),
+  kitabBagian: many(kitabBagian),
+}));
+
+export const kitabBagianRelations = relations(kitabBagian, ({ one }) => ({
+  kitab: one(kitab, { fields: [kitabBagian.kitabId], references: [kitab.id] }),
+  kelas: one(kelas, { fields: [kitabBagian.kelasId], references: [kelas.id] }),
 }));
 
 export const halamanRelations = relations(halaman, ({ one, many }) => ({

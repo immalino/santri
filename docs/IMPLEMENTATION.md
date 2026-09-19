@@ -2,7 +2,7 @@
 
 **Project:** e-Santri
 **Status:** 🔄 Dalam Pengerjaan (update checklist di bawah setiap selesai mengerjakan)
-**Terakhir di-update:** 2026-09-18
+**Terakhir di-update:** 2026-09-19
 
 > Plan ini ditulis seperti arahan **senior developer → junior developer**. Idenya: kamu (junior, manusia atau AI) mengerjakan step-by-step sesuai urutan, centang checklist ketika selesai, dan jangan lompat ke fase berikutnya sebelum fase sebelumnya **Definition of Done**-nya terpenuhi.
 
@@ -45,6 +45,7 @@
 - [x] **Fase 12 — Template Laporan Teks per Sesi (Admin & Ustadz)**
 - [x] **Tambahan (pasca Fase 12) — Filter/Sort Daftar Santri + Edit Massal (Admin)**
 - [x] **Fase 13 — Kurikulum Kelas–Kitab + Laporan Kenaikan & Lubang**
+- [x] **Fase 14 — Rentang Bagian Kitab per Kelas (`kitab_bagian`)**
 
 ---
 
@@ -668,6 +669,50 @@
 > ALTER TABLE kitab ADD COLUMN IF NOT EXISTS kelas_id uuid REFERENCES kelas(id);
 > ```
 > Dev migrated via `db:push`; prod must run the SQL above (never `db:push` to prod — drizzle-kit introspection bug, see Fase 4 note).
+
+---
+
+## 10h. Fase 14 — Rentang Bagian Kitab per Kelas (`kitab_bagian`)
+
+**Tujuan:** Satu kitab bisa dipecah menjadi N rentang halaman yang tidak bertabrakan, masing-masing dimiliki satu kelas (mis. Quran hal 1–300 kelas A, hal 301–600 kelas B). Syarat naik kelas & laporan lubang dihitung per bagian; kitab tanpa bagian tetap jalan via fallback virtual full.
+
+### Task
+
+- [x] **14.1** Skema DB (`src/db/schema.ts`): tabel `kitab_bagian` (`id` uuid PK, `kitab_id` uuid FK → `kitab.id` **cascade** + index, `kelas_id` uuid FK → `kelas.id` + index, `halaman_dari` + `halaman_sampai` integer, `created_at`/`updated_at`) + relasi Drizzle.
+- [x] **14.2** Validasi (`src/lib/validations.ts`): `kitabBagianInputSchema` (`kitabId`/`kelasId` UUID, `halamanDari` ≥ 1, `halamanSampai` ≥ `halamanDari`) & `kitabBagianUpdateSchema` (parsial); overlap antar-bagian satu kitab + batas `halaman_sampai ≤ jumlah_halaman` dicek di handler (400 bila tabrakan/melebihi, 404 bila kitab/kelas tidak ada).
+- [x] **14.3** API admin-only (`requireApiRole(["admin"])`): `GET/POST /api/kitab/[id]/bagian` (list + tambah), `PATCH/DELETE /api/kitab/bagian/[bagianId]` (edit/hapus).
+- [x] **14.4** Guard hapus kelas (`src/app/api/kelas/[id]/route.ts`): DELETE 400 bila kelas masih dimiliki bagian kitab (selain cek santri & pemetaan kitab Fase 13).
+- [x] **14.5** Helper `getKenaikanStatus` (`src/lib/kenaikan.ts`): scope per bagian (`bagianId: string | null`, `labelRentang: string | null`); kitab berbagian → satu entri per bagian milik kelas berurutan ≤ kelas santri; kitab tanpa bagian → fallback virtual full (pemilik = `kitab.kelas_id`).
+- [x] **14.6** Helper `getLubangReport` (`src/lib/kenaikan.ts`): satu blok per bagian (rata-rata per halaman dalam rentang, penyebut santri aktif non-lulus); kitab tanpa bagian → satu blok full.
+- [x] **14.7** UI: editor rentang per kelas di halaman `/admin/kitab` (`kitab-manager.tsx`); kartu kenaikan (`KenaikanCard`) & laporan lubang (`LubangReport` + `/ustadz/laporan` + dashboard admin) tampil per bagian dengan label rentang (key React `bagianId ?? kitabId`).
+- [x] **14.8** Verifikasi E2E (Task 8): skrip sementara `scripts/verify-bagian-e2e.ts` — seed 1 kitab uji "Al-Quran Test E2E" (20 hlm) + 2 bagian, cek `getLubangReport` = 2 blok quran & `getKenaikanStatus` jalan, lalu hapus data uji (DB kembali bersih: 0 bagian). Hasil: `E2E OK`, `npm run lint` & `npm run build` hijau. Skrip dihapus setelah dipakai.
+- [x] **14.9** Sinkronkan docs: `SCHEMA.md` (tabel + diagram + contoh Drizzle), `ARCHITECTURE.md` (§3 route + §4), `IMPLEMENTATION.md` (fase ini).
+
+### Definition of Done (Fase 14)
+
+- [x] Admin bisa tambah/edit/hapus bagian per kitab; rentang bertabrakan atau melebihi jumlah halaman ditolak 400.
+- [x] Hapus kelas yang masih dimiliki bagian ditolak 400; hapus kitab meng-cascade bagiannya.
+- [x] Kartu sisa & laporan lubang tampil per bagian dengan label rentang; kitab tanpa bagian tetap tampil full (fallback).
+- [x] `npm run lint` & `npm run build` hijau; tidak ada sisa data uji di DB.
+
+> 📝 **Catatan Fase 14:**
+> - **Migrasi prod (additive SQL — run on prod, never push):**
+> ```sql
+> CREATE TABLE IF NOT EXISTS kitab_bagian (
+>   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+>   kitab_id uuid NOT NULL REFERENCES kitab(id) ON DELETE CASCADE,
+>   kelas_id uuid NOT NULL REFERENCES kelas(id),
+>   halaman_dari integer NOT NULL,
+>   halaman_sampai integer NOT NULL,
+>   created_at timestamp NOT NULL DEFAULT now(),
+>   updated_at timestamp NOT NULL DEFAULT now()
+> );
+> CREATE INDEX IF NOT EXISTS idx_kitab_bagian_kitab_id ON kitab_bagian (kitab_id);
+> CREATE INDEX IF NOT EXISTS idx_kitab_bagian_kelas_id ON kitab_bagian (kelas_id);
+> ```
+> Dev migrated via `db:push`; prod must run SQL aditif (never `db:push` to prod — drizzle-kit introspection bug, see Fase 4 note).
+> - **Teardown E2E:** `halaman.kitab_id` tidak punya `onDelete cascade` (hanya `kitab_bagian.kitab_id` yang cascade), jadi skrip uji menghapus baris `halaman` + `kitab_bagian` eksplisit sebelum menghapus kitab uji.
+> - **Skrip E2E dibungkus `main()`** (tanpa top-level await) karena `package.json` tanpa `"type": "module"` → tsx menjalankan `.ts` sebagai CJS.
 
 ---
 

@@ -50,7 +50,7 @@ Dokumen ini menjabarkan arsitektur teknis berdasarkan `PRD.md`.
       /pengaturan         -> ganti password sendiri
     /api
       /auth/[...all]      -> better-auth handler
-      /kitab              (+ /[id])
+       /kitab              (+ /[id], /[id]/bagian, /bagian/[bagianId])
       /kelas              (+ /[id])
       /santri             (+ /[id], /[id]/progress, /[id]/absensi)
       /users              (+ /[id])
@@ -89,6 +89,7 @@ santri           (id, nama, kelas, status_aktif)
 wali_santri      (wali_id, santri_id)         -- relasi many-to-many
 kelas            (id, nama, deskripsi, urutan, bebas_syarat)
 kitab            (id, nama, jumlah_halaman, deskripsi, status[aktif|nonaktif], kelas_id → kelas.id, nullable)
+kitab_bagian     (id, kitab_id → kitab.id cascade, kelas_id → kelas.id, halaman_dari, halaman_sampai) -- rentang materi per kelas (Fase 14)
 halaman          (id, kitab_id, nomor_halaman) -- auto-generate saat kitab dibuat/diedit
 pencapaian       (id, santri_id, halaman_id, persentase, dinilai_oleh(users.id), tanggal)
 kegiatan         (id, nama, deskripsi, status[aktif|nonaktif], dibuat_oleh(users.id))
@@ -107,6 +108,7 @@ Catatan implementasi:
 - `kegiatan_template` (template laporan teks) dimiliki per kegiatan: hapus kegiatan meng-cascade template; tambah/hapus peserta atau sesi tidak menyentuh template. Render `{{var}}` murni di browser dari data sesi yang sudah dimuat server.
 - Syarat naik kelas dihitung kumulatif (semua materi kelas berurutan ≤ kelas santri) + khatam strict 100% secara on-the-fly tanpa snapshot; kitab yang belum dipetakan (kelas null), nonaktif, atau milik kelas lulus (bebas syarat) dikecualikan.
 - Hapus kelas yang masih dipetakan kitab ditolak 400 (lepas dulu pemetaan kitabnya).
+- `kitab_bagian` (Fase 14): satu kitab boleh dipecah menjadi N rentang halaman yang tidak bertabrakan, masing-masing dimiliki satu kelas. Syarat naik kelas (`getKenaikanStatus`) & laporan lubang (`getLubangReport`) dihitung **per bagian** (blok `bagianId` + `labelRentang`, key React `bagianId ?? kitabId`); kartu & laporan menampilkan label rentang per blok. Kitab tanpa bagian memakai fallback virtual full (pemilik = `kitab.kelas_id`). Validasi overlap & batas halaman di level aplikasi. Hapus kelas yang masih dimiliki bagian ditolak 400; hapus kitab meng-cascade bagiannya. CRUD bagian admin-only (`GET/POST /api/kitab/[id]/bagian`, `PATCH/DELETE /api/kitab/bagian/[bagianId]`); editor rentang di halaman `/admin/kitab`.
 
 ## 5. Autentikasi & Otorisasi
 

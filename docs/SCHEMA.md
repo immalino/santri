@@ -118,6 +118,21 @@ Unique constraint: (`wali_id`, `santri_id`) — mencegah duplikat relasi.
 | created_at | timestamp | |
 | updated_at | timestamp | |
 
+### `kitab_bagian`
+Rentang halaman kitab per kelas (Fase 14). Satu kitab boleh dipecah menjadi N bagian yang tidak bertabrakan, masing-masing dimiliki satu kelas — mis. Quran hal 1–300 untuk kelas A, hal 301–600 untuk kelas B.
+
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| id | uuid, PK | |
+| kitab_id | uuid, FK → kitab.id (**cascade**) | hapus kitab ikut hapus bagiannya |
+| kelas_id | uuid, FK → kelas.id | pemilik materi bagian ini |
+| halaman_dari | integer | batas bawah rentang (≥ 1) |
+| halaman_sampai | integer | batas atas rentang (≥ halaman_dari, ≤ jumlah_halaman kitab) |
+| created_at | timestamp | |
+| updated_at | timestamp | |
+
+Index di `kitab_id` & `kelas_id`. Validasi overlap antar-bagian satu kitab + batas halaman di level aplikasi (zod + cek query), bukan constraint DB. Kitab tanpa baris bagian memakai fallback virtual full (1–jumlah_halaman, pemilik = `kitab.kelas_id`).
+
 ### `halaman`
 Auto-generate saat `kitab` dibuat/jumlah halaman ditambah.
 
@@ -229,6 +244,7 @@ user (role: admin/ustadz/wali)
   ├──< session, account, verification (better-auth)
   │
   ├──< wali_santri >── santri >── kelas <── kitab
+  │                       │              └──< kitab_bagian >── kelas (pemilik per rentang)
   │                       │
   │                       └──< pencapaian >── halaman >── kitab
   │
@@ -283,6 +299,19 @@ export const kitab = pgTable("kitab", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const kitabBagian = pgTable("kitab_bagian", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  kitabId: uuid("kitab_id").references(() => kitab.id, { onDelete: "cascade" }).notNull(),
+  kelasId: uuid("kelas_id").references(() => kelas.id).notNull(),
+  halamanDari: integer("halaman_dari").notNull(),
+  halamanSampai: integer("halaman_sampai").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_kitab_bagian_kitab_id").on(table.kitabId),
+  index("idx_kitab_bagian_kelas_id").on(table.kelasId),
+]);
 
 export const halaman = pgTable("halaman", {
   id: uuid("id").defaultRandom().primaryKey(),

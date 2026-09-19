@@ -80,13 +80,16 @@ export function LubangReport({ data }: { data: LubangKitab[] }) {
                 : kitab.halaman;
             return (
               <details
-                key={kitab.kitabId}
+                key={kitab.bagianId ?? kitab.kitabId}
                 className="group rounded-2xl border border-border bg-surface shadow-sm"
               >
                 <summary className="flex cursor-pointer list-none items-center gap-3 p-5 select-none [&::-webkit-details-marker]:hidden">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-ink">{kitab.namaKitab}</span>
+                      <span className="font-semibold text-ink">
+                        {kitab.namaKitab}
+                        {kitab.labelRentang ? <span className="text-ink-secondary"> — {kitab.labelRentang}</span> : null}
+                      </span>
                       <Badge variant="secondary">{kitab.halaman.length} halaman</Badge>
                     </div>
                   </div>

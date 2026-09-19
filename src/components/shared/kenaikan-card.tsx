@@ -39,11 +39,14 @@ export function KenaikanCard({ status }: { status: KenaikanStatus }) {
       {status.kitabBelum.length === 0 ? null : (
         <div className="mt-3 space-y-3 border-t border-border pt-3">
           {status.kitabBelum.map((k) => (
-            <details key={k.kitabId} className="group rounded-xl border border-border bg-background/60">
+            <details key={k.bagianId ?? k.kitabId} className="group rounded-xl border border-border bg-background/60">
               <summary className="flex cursor-pointer list-none items-center gap-3 p-3 select-none [&::-webkit-details-marker]:hidden">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-ink">{k.namaKitab}</span>
+                    <span className="text-sm font-semibold text-ink">
+                      {k.namaKitab}
+                      {k.labelRentang ? <span className="font-normal text-ink-secondary"> — {k.labelRentang}</span> : null}
+                    </span>
                     <Badge variant="secondary">{k.kelasNama}</Badge>
                   </div>
                   <p className="mt-0.5 text-xs text-ink-secondary">

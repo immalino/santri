@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { count, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { kelas, kitab, santri } from "@/db/schema";
+import { kelas, kitab, kitabBagian, santri } from "@/db/schema";
 import { requireApiRole } from "@/lib/permissions";
 import { kelasInputSchema } from "@/lib/validations";
 
@@ -78,6 +78,17 @@ export async function DELETE(_req: Request, { params }: Params) {
   if (jumlahKitab > 0) {
     return NextResponse.json(
       { error: `Kelas masih dipakai ${jumlahKitab} kitab. Pindahkan kitab dulu.` },
+      { status: 400 },
+    );
+  }
+
+  const [{ value: jumlahBagian }] = await db
+    .select({ value: count() })
+    .from(kitabBagian)
+    .where(eq(kitabBagian.kelasId, id));
+  if (jumlahBagian > 0) {
+    return NextResponse.json(
+      { error: `Kelas masih dipakai ${jumlahBagian} bagian kitab. Pindahkan bagian dulu.` },
       { status: 400 },
     );
   }

@@ -30,7 +30,10 @@ export default async function AdminKitabPage() {
         status: true,
         kelasId: true,
       },
-      with: { kelas: { columns: { namaKelas: true } } },
+      with: {
+        kelas: { columns: { namaKelas: true } },
+        kitabBagian: { with: { kelas: { columns: { namaKelas: true } } } },
+      },
     }),
     db.query.kelas.findMany({
       orderBy: (k, { asc }) => [asc(k.urutan), asc(k.namaKelas)],
@@ -45,6 +48,15 @@ export default async function AdminKitabPage() {
     status: r.status,
     kelasId: r.kelasId,
     kelasNama: r.kelas?.namaKelas ?? null,
+    bagian: (r.kitabBagian ?? [])
+      .map((b) => ({
+        id: b.id,
+        kelasId: b.kelasId,
+        kelasNama: b.kelas?.namaKelas ?? null,
+        halamanDari: b.halamanDari,
+        halamanSampai: b.halamanSampai,
+      }))
+      .sort((a, b) => a.halamanDari - b.halamanDari),
   }));
   const kelasOptions: KelasOption[] = kelasRows.map((k) => ({
     id: k.id,

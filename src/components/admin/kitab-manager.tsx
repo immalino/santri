@@ -12,6 +12,15 @@ import { Field, Textarea } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 
+/** Satu rentang halaman kitab yang dimiliki satu kelas (JSON-serializable). */
+export interface KitabBagianItem {
+  id: string;
+  kelasId: string;
+  kelasNama: string | null;
+  halamanDari: number;
+  halamanSampai: number;
+}
+
 /** Kitab row shared by the server page and this manager (JSON-serializable). */
 export interface KitabItem {
   id: string;
@@ -21,6 +30,7 @@ export interface KitabItem {
   status: "aktif" | "nonaktif";
   kelasId: string | null;
   kelasNama: string | null;
+  bagian: KitabBagianItem[];
 }
 
 interface KitabForm {
@@ -38,6 +48,149 @@ const emptyForm: KitabForm = {
   status: "aktif",
   kelasId: "",
 };
+
+/**
+ * Editor rentang per kartu kitab (Task 7). Menampilkan daftar bagian +
+ * form inline (dua Input number + Select kelas + Simpan/Hapus) lewat
+ * HTTP API Task 2. Tidak mengimpor internals route (ledger ruling).
+ */
+function BagianEditor({
+  kitab,
+  kelasOptions,
+  onChanged,
+}: {
+  kitab: KitabItem;
+  kelasOptions: { id: string; namaKelas: string; urutan: number }[];
+  onChanged: () => Promise<void>;
+}) {
+  const toast = useToast();
+  const [kelasId, setKelasId] = useState("");
+  const [dari, setDari] = useState("");
+  const [sampai, setSampai] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleAdd(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await toast.promise(
+        api(`/api/kitab/${kitab.id}/bagian`, {
+          method: "POST",
+          body: JSON.stringify({
+            kelasId,
+            halamanDari: Number(dari),
+            halamanSampai: Number(sampai),
+          }),
+        }),
+        {
+          loading: "Menambahkan bagian...",
+          success: "Bagian berhasil ditambahkan.",
+          error: (err) => (err instanceof Error ? err.message : "Gagal menambahkan bagian."),
+        },
+      );
+      setDari("");
+      setSampai("");
+      await onChanged();
+    } catch {
+      // Error sudah ditampilkan lewat toast (termasuk
+      // "Rentang bertabrakan dengan bagian lain kitab ini.").
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(bagianId: string) {
+    try {
+      await toast.promise(api(`/api/kitab/bagian/${bagianId}`, { method: "DELETE" }), {
+        loading: "Menghapus bagian...",
+        success: "Bagian berhasil dihapus.",
+        error: (err) => (err instanceof Error ? err.message : "Gagal menghapus bagian."),
+      });
+      await onChanged();
+    } catch {
+      // Error sudah ditampilkan lewat toast.
+    }
+  }
+
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-background p-3">
+      <p className="text-sm font-medium text-ink">Bagian per kelas</p>
+      {kitab.bagian.length === 0 ? (
+        <p className="text-xs text-ink-secondary">
+          Belum ada bagian. Tambahkan rentang halaman per kelas di bawah.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {kitab.bagian.map((b) => (
+            <li
+              key={b.id}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs"
+            >
+              <span className="min-w-0 truncate text-ink">
+                hal {b.halamanDari}–{b.halamanSampai} • {b.kelasNama ?? "Kelas dihapus"}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDelete(b.id)}
+              >
+                Hapus
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={handleAdd} className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Dari" htmlFor={`bagian-dari-${kitab.id}`}>
+            <Input
+              id={`bagian-dari-${kitab.id}`}
+              type="number"
+              min={1}
+              max={kitab.jumlahHalaman}
+              step={1}
+              required
+              value={dari}
+              onChange={(e) => setDari(e.target.value)}
+              placeholder="1"
+            />
+          </Field>
+          <Field label="Sampai" htmlFor={`bagian-sampai-${kitab.id}`}>
+            <Input
+              id={`bagian-sampai-${kitab.id}`}
+              type="number"
+              min={1}
+              max={kitab.jumlahHalaman}
+              step={1}
+              required
+              value={sampai}
+              onChange={(e) => setSampai(e.target.value)}
+              placeholder={String(kitab.jumlahHalaman)}
+            />
+          </Field>
+        </div>
+        <Field label="Kelas" htmlFor={`bagian-kelas-${kitab.id}`}>
+          <Select
+            id={`bagian-kelas-${kitab.id}`}
+            value={kelasId}
+            onChange={(e) => setKelasId(e.target.value)}
+          >
+            <option value="">Pilih kelas</option>
+            {kelasOptions.map((k) => (
+              <option key={k.id} value={k.id}>
+                {k.namaKelas} (urutan {k.urutan})
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Button type="submit" size="sm" disabled={saving || !kelasId || !dari || !sampai}>
+          {saving ? "Menyimpan..." : "Simpan"}
+        </Button>
+      </form>
+    </div>
+  );
+}
 
 /**
  * Kitab management (tasks 4.5–4.6). Holds the list as state, mutates through
@@ -59,17 +212,68 @@ export default function KitabManager({
   const [loading, setLoading] = useState(false);
 
   async function refresh() {
-    const rows = await api<KitabItem[]>("/api/kitab");
-    // GET /api/kitab returns kelasId without the joined kelas name, so
-    // re-attach it from the page-level options to keep the badge visible.
-    setKitabs(
-      rows.map((r) => ({
-        ...r,
-        kelasNama: r.kelasId
+    const rows = await api<
+      (Omit<KitabItem, "bagian"> & {
+        bagian?: KitabBagianItem[];
+        kelas?: { namaKelas: string } | null;
+      })[]
+    >("/api/kitab");
+    // GET /api/kitab returns kelasId without the joined kelas name and
+    // without bagian, so re-attach names from the page-level options and
+    // fetch each kitab's rentang via the Task 2 bagian API (HTTP only).
+    const withBagian = await Promise.all(
+      rows.map(async (r) => {
+        const kelasNama = r.kelasId
           ? (kelasOptions.find((k) => k.id === r.kelasId)?.namaKelas ?? r.kelasNama ?? null)
-          : null,
-      })),
+          : null;
+        let bagian: KitabBagianItem[];
+        try {
+          const bRows = await api<
+            {
+              id: string;
+              kelasId: string;
+              halamanDari: number;
+              halamanSampai: number;
+              kelas?: { namaKelas: string } | null;
+            }[]
+          >(`/api/kitab/${r.id}/bagian`);
+          bagian = bRows
+            .map((b) => ({
+              id: b.id,
+              kelasId: b.kelasId,
+              kelasNama:
+                kelasOptions.find((k) => k.id === b.kelasId)?.namaKelas ??
+                b.kelas?.namaKelas ??
+                null,
+              halamanDari: b.halamanDari,
+              halamanSampai: b.halamanSampai,
+            }))
+            .sort((a, b) => a.halamanDari - b.halamanDari);
+        } catch {
+          // Bila fetch bagian gagal, pertahankan bagian yang sudah ada.
+          bagian = (r.bagian ?? [])
+            .map((b) => ({
+              ...b,
+              kelasNama:
+                kelasOptions.find((k) => k.id === b.kelasId)?.namaKelas ??
+                b.kelasNama ??
+                null,
+            }))
+            .sort((a, b) => a.halamanDari - b.halamanDari);
+        }
+        return {
+          id: r.id,
+          namaKitab: r.namaKitab,
+          jumlahHalaman: r.jumlahHalaman,
+          deskripsi: r.deskripsi,
+          status: r.status,
+          kelasId: r.kelasId,
+          kelasNama,
+          bagian,
+        };
+      }),
     );
+    setKitabs(withBagian);
   }
 
   function openCreate() {
@@ -275,8 +479,15 @@ export default function KitabManager({
                 <Badge variant={item.status === "aktif" ? "success" : "secondary"}>
                   {item.status === "aktif" ? "Aktif" : "Nonaktif"}
                 </Badge>
-                {item.kelasNama ? <Badge variant="success">{item.kelasNama}</Badge> : null}
+                {item.bagian.length === 0 && item.kelasNama ? (
+                  <Badge variant="success">{item.kelasNama}</Badge>
+                ) : null}
               </div>
+              {item.bagian.length > 0 ? (
+                <p className="text-xs text-ink-secondary">Diatur per bagian di bawah</p>
+              ) : null}
+
+              <BagianEditor kitab={item} kelasOptions={kelasOptions} onChanged={refresh} />
 
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="secondary" size="sm" onClick={() => openEdit(item)}>
